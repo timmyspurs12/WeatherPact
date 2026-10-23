@@ -56,4 +56,13 @@ jobs:
           if [ -n "$WEATHERPACT_CONTRACT_ADDRESS" ]; then
             args+=(--require-contract)
           fi
-          npm run verify:network -- "${args[@]}"
+          set +e
+          output=$(npm run verify:network -- "${args[@]}" 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          escaped=${output//'%'/'%25'}
+          escaped=${escaped//$'\r'/'%0D'}
+          escaped=${escaped//$'\n'/'%0A'}
+          printf '::notice title=Bradbury guard output::%s\n' "$escaped"
+          exit "$status"
