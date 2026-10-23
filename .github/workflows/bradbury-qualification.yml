@@ -1,6 +1,11 @@
 name: Bradbury qualification
 
 on:
+  push:
+    branches:
+      - arena/83ab2069-weatherpact
+    paths:
+      - .github/workflows/bradbury-qualification.yml
   workflow_dispatch:
     inputs:
       node_rpc:
@@ -43,8 +48,8 @@ jobs:
           ./node_modules/.bin/genlayer network info
       - name: Run the unchanged read-only network and contract guard
         env:
-          GENLAYER_NODE_RPC_URL: ${{ inputs.node_rpc }}
-          GENLAYER_CHAIN_RPC_URL: ${{ inputs.chain_rpc }}
+          GENLAYER_NODE_RPC_URL: ${{ inputs.node_rpc || 'https://rpc.testnet-chain.genlayer.com' }}
+          GENLAYER_CHAIN_RPC_URL: ${{ inputs.chain_rpc || 'https://rpc.testnet-chain.genlayer.com' }}
           WEATHERPACT_CONTRACT_ADDRESS: ${{ inputs.contract_address }}
         run: |
           args=()
