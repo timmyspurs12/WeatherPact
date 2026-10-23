@@ -117,27 +117,46 @@ function findInSource(source, url) {
 
     await page.goto(`${origin}/builders`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2_000);
-    const builderPage = await summarize(page, 'Builders landing');
+    await summarize(page, 'Builders landing');
 
-    const becomeBuilder = page
-      .getByRole('link', { name: /Become a Builder/i })
-      .or(page.getByRole('button', { name: /Become a Builder/i }));
-    if ((await becomeBuilder.count()) > 0) {
-      await becomeBuilder.first().click();
-      await page.waitForTimeout(2_000);
-      await summarize(page, 'After Become a Builder (no authentication attempted)');
+    async function clickFirstVisible(locator) {
+      const count = await locator.count();
+      for (let index = 0; index < count; index += 1) {
+        const candidate = locator.nth(index);
+        if (await candidate.isVisible()) {
+          await candidate.click();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (await clickFirstVisible(page.getByText('Contribute', { exact: true }))) {
+      await page.waitForTimeout(1_500);
+      await summarize(page, 'After Contribute navigation (no authentication attempted)');
     } else {
-      result.errors.push({ navigation: 'Become a Builder control not found' });
+      result.errors.push({ navigation: 'Visible Contribute control not found' });
+    }
+
+    await page.goto(`${origin}/builders`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1_500);
+    if (await clickFirstVisible(page.getByRole('button', { name: 'Builders', exact: true }))) {
+      await page.waitForTimeout(1_500);
+      await summarize(page, 'After Builders navigation (no authentication attempted)');
+    } else {
+      result.errors.push({ navigation: 'Visible Builders navigation control not found' });
     }
 
     await page.goto(`${origin}/builders/explorer`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2_000);
-    const explorerPage = await summarize(page, 'Project Explorer');
-    const applicationLinks = [...builderPage.links, ...explorerPage.links].filter(
-      (item) =>
-        item.href.startsWith(origin) &&
-        /apply|submit|application|contribution/i.test(`${item.text} ${item.href}`),
-    );
+    await summarize(page, 'Project Explorer');
+    const applicationLinks = result.pages
+      .flatMap((item) => item.links)
+      .filter(
+        (item) =>
+          item.href.startsWith(origin) &&
+          /apply|submit|application|contribution/i.test(`${item.text} ${item.href}`),
+      );
     for (const item of applicationLinks.slice(0, 5)) {
       await page.goto(item.href, { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(1_500);
