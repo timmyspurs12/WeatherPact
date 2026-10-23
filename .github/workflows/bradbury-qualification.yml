@@ -66,3 +66,36 @@ jobs:
           escaped=${escaped//$'\n'/'%0A'}
           printf '::notice title=Bradbury guard output::%s\n' "$escaped"
           exit "$status"
+      - name: Diagnose gen_call availability after a guard failure
+        if: failure()
+        env:
+          GENLAYER_NODE_RPC_URL: ${{ inputs.node_rpc || 'https://rpc.testnet-chain.genlayer.com' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createClient } from 'genlayer-js';
+          import { testnetBradbury } from 'genlayer-js/chains';
+          import { TransactionHashVariant } from 'genlayer-js/types';
+
+          const client = createClient({
+            chain: testnetBradbury,
+            endpoint: process.env.GENLAYER_NODE_RPC_URL,
+          });
+          let message;
+          try {
+            await client.readContract({
+              address: '0x0000000000000000000000000000000000000000',
+              functionName: 'get_metadata',
+              args: [],
+              transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+            });
+            message = 'gen_call returned from the zero-address diagnostic; this is not a contract verification.';
+          } catch (error) {
+            message = `gen_call diagnostic: ${error instanceof Error ? error.message : String(error)}`;
+          }
+          console.log(message);
+          const escaped = message
+            .replaceAll('%', '%25')
+            .replaceAll('\r', '%0D')
+            .replaceAll('\n', '%0A');
+          console.log(`::notice title=gen_call diagnostic::${escaped}`);
+          NODE
