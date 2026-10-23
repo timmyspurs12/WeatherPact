@@ -36,7 +36,7 @@ function escapeCommand(value) {
 function emit(title, value) {
   const text = printable(value);
   console.log(`\n=== ${title} ===\n${text}`);
-  const chunkSize = 12_000;
+  const chunkSize = 3_000;
   const chunks = Math.max(1, Math.ceil(text.length / chunkSize));
   for (let index = 0; index < chunks; index += 1) {
     const suffix = chunks > 1 ? ` (${index + 1}/${chunks})` : '';
@@ -134,21 +134,42 @@ async function sdkProbe(label, operation) {
       throw error;
     }
   };
+  let outcome;
   try {
-    const result = await operation();
-    emit(label, {
-      sdkOutcome: 'success',
-      sdkResult: result,
-      exchanges,
-    });
+    await operation();
+    outcome = { sdkOutcome: 'success', sdkResult: 'See the raw JSON-RPC response body.' };
   } catch (error) {
-    emit(label, {
+    const message = error instanceof Error ? error.message : String(error);
+    outcome = {
       sdkOutcome: 'error',
-      sdkError: error instanceof Error ? error.message : String(error),
-      exchanges,
-    });
+      sdkError: message.length > 1_000 ? `${message.slice(0, 1_000)}…` : message,
+      sdkErrorTruncated: message.length > 1_000,
+    };
   } finally {
     globalThis.fetch = originalFetch;
+  }
+  emit(`${label} — SDK outcome`, outcome);
+  for (const [index, exchange] of exchanges.entries()) {
+    let request = exchange.requestBody;
+    try {
+      request = JSON.parse(exchange.requestBody);
+      if (request?.method === 'gen_getContractSchema' && request.params?.[0]?.code) {
+        request.params[0].code = `<${request.params[0].code.length} base64 characters; full current contract source>`;
+      }
+    } catch {
+      request = '<unparseable request body>';
+    }
+    emit(`${label} — HTTP exchange ${index + 1}`, {
+      request,
+      requestBodyCharacters: exchange.requestBody.length,
+      requestBodySha256: createHash('sha256').update(exchange.requestBody).digest('hex'),
+      httpStatus: exchange.httpStatus ?? null,
+      responseHeaders: exchange.responseHeaders ?? null,
+      transportError: exchange.transportError ?? null,
+    });
+    if (exchange.responseBody !== undefined) {
+      emit(`${label} — raw JSON-RPC response body ${index + 1}`, exchange.responseBody);
+    }
   }
 }
 
