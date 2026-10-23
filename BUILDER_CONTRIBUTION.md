@@ -1,58 +1,133 @@
-# WeatherPact Builder contribution packet
+# WeatherPact Project contribution packet
 
-Prepared 2026-10-23. **No Portal submission has been made.** This packet uses the documented pre-deployment **Builder → GitHub Repository** contribution path. It is not a Contract Deployed submission or a claim that WeatherPact is deployed on Bradbury Phase 2.
+Prepared 2026-10-23 from the account owner's current **Project** form. **No Portal submission has been made.**
 
-## Documented basis
+## Outcome and boundary
 
-The published GenLayer Points documentation distinguishes repository contributions from deployment contributions:
+**B at the form/evidence level:** the Project form does not require a contract link and does not state a Bradbury-only deployment requirement. A truthful pre-deployment Project submission can therefore be prepared with the required website and GitHub evidence. This is not a guarantee of steward acceptance.
 
-- [Builders Guide](https://mintlify.wiki/genlayer-foundation/points/guides/builders): a GitHub Repository contribution requires a public GenLayer-related repository, substantial code (>100 lines), a clear README, and GitHub account linking. Contract Deployed is a separate type with separate deployment evidence.
-- [Contribution Types](https://mintlify.wiki/genlayer-foundation/points/guides/contribution-types): GitHub Repository requires the repository URL, README, and commit history; Contract Deployed requires an actual GenLayer testnet deployment plus a contract address or transaction hash.
-- [Evidence Guidelines](https://mintlify.wiki/genlayer-foundation/points/guides/evidence-guidelines): the repository URL is required; specific files, documentation, and a live demo are recommended. A live demo is not a substitute for deployment evidence.
-- [Submitting Contributions](https://mintlify.wiki/genlayer-foundation/points/guides/submitting-contributions): a complete profile, contribution type, actual completion date, URL evidence, and steward review are required. Notes are optional and limited to 1,000 characters.
+The same form sets a strict quality bar: **“Frontend genuinely calls the contract and handles the full transaction lifecycle.”** WeatherPact contains a real adapter and lifecycle implementation, but the current public website is preview-only and does not prove a live contract call. Do not claim that this quality-bar item has been demonstrated. Submitting now carries the form's stated rejection and weekly-slot consequences.
 
-## Submission path for the account owner
+This Project-specific packet supersedes the earlier general repository-only packet. It does not use the closed hackathon rules or treat optional contract links as proof of deployment.
 
-1. Open [GenLayer Portal → Builders](https://portal.genlayer.foundation/builders/) and choose **Become a Builder**. The current Portal asks for a wallet sign-in signature; the account owner must approve it. No signature was requested or approved during this preparation.
-2. Complete the Builder Welcome/profile steps, including display name and email. Link the account owner's GitHub profile as required for repository contributions.
-3. Open **Submit Contribution**, choose **Builder → GitHub Repository**, and enter the actual date the repository work was completed. Do not use a future date or automatically substitute the submission date.
-4. Add the notes and public URL evidence below. Complete the new-submission reCAPTCHA and submit for steward review only after checking every statement.
-5. Do not select **Contract Deployed**, and do not enter an invented address, transaction, explorer link, fee profile, deployment status, or consensus result.
+## Project form requirements established
 
-## Ready-to-check fields
+- Contract links are optional; blank is truthful when no deployment exists.
+- Website is required before review.
+- Evidence requires at least the supported **GitHub Repository** type.
+- Demo video is optional and must be a direct YouTube video or X post URL.
+- The available Project kinds are a standalone reusable **Intelligent Contract** or a **Milestone**. Milestones require an already accepted Project Explorer project.
+- The quality bar requires a real trust problem, live or authoritative data where applicable, complete source and accurate docs, a frontend genuinely calling the contract with full transaction lifecycle handling, and meaningful difference from boilerplate.
+- More-information requests update the existing submission without another slot. Fixes or new evidence after rejection require a new submission and another slot. An appeal challenges only the original decision and does not use a slot.
+- Reviews take one to two weeks. The form warns that new contributions may miss the Season 1 snapshot and instead count toward Season 2.
 
-**Contribution type:** Builder → GitHub Repository  
-**Repository:** https://github.com/timmyspurs12/WeatherPact  
-**Public website:** https://weatherpact.vercel.app  
-**Website status:** static frontend in conspicuously labelled preview mode; not connected to a deployed WeatherPact contract and not evidence of on-chain activity.
+The account owner's pasted form showed **1 of 2 Project slots used**, resetting Monday at 00:00 UTC. Do not spend the remaining slot on an overstated application.
 
-### Notes (991 characters, within the documented 1,000-character limit)
+Full-guideline link supplied by the form: https://portal.genlayer.foundation/contribution-type/41. An unauthenticated fetch redirected to the Portal home, so this packet asserts only the field rules visible in the account owner's supplied form, not unseen guideline text.
 
-> WeatherPact is a React + TypeScript DApp and Python Intelligent Contract for public, measurable weather pacts. The contract builds fixed Open-Meteo Historical Weather API requests from validated fields and resolves numerical YES/NO outcomes through GenLayer's non-deterministic equivalence flow. It has no payments, stakes, payouts, tokens, API backend, or off-chain outcome database. The repository includes the contract, accessible static frontend, real/preview adapter boundary, transaction journal, network/deployment guards, tests, and documentation. Local checks pass: 38 Direct Mode tests, 3 GenVM lint checks, 5 journal tests, 7 network fixtures, and the strict TypeScript/Vite build. Not deployed: no contract address, transaction, fee profile, or live consensus result is claimed. The website is labelled preview mode with genuine writes disabled. Historical weather data may be model-derived or reanalysis-based; validator agreement is not independent multi-provider verification.
+## 01 — Identity
 
-### URL evidence
+- **Project name:** WeatherPact
+- **Project kind:** Standalone reusable **Intelligent Contract**, not Milestone
+- **Primary tag:** **Other** — the least misleading available primary category for a non-financial weather-evidence DApp. Do not select Prediction Markets merely because a pact has a YES/NO prediction; there are no stakes or payouts.
+- **Tag 1 / Tag 2:** choose only precise topics actually offered after selecting Other. The supplied form did not include those dependent options, so no option names are invented here.
 
-| Description                                                                                                         | URL                                                                                                                        |
-| ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Public WeatherPact repository containing the Intelligent Contract, static DApp, tests, and documentation.           | https://github.com/timmyspurs12/WeatherPact                                                                                |
-| README describing architecture, local validation, preview limitations, and the missing qualified GenLayer node RPC. | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/README.md                        |
-| Authoritative Python Intelligent Contract with fixed Open-Meteo evidence requests and strict outcome validation.    | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/contracts/weatherpact.py         |
-| Direct Mode contract tests; local validation only, not deployment or live consensus evidence.                       | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/tests/direct/test_weatherpact.py |
-| Static production website in preview mode; genuine writes are disabled and no on-chain records are claimed.         | https://weatherpact.vercel.app                                                                                             |
+**Logo:** [`submission/weatherpact-logo.png`](submission/weatherpact-logo.png)
 
-## Evidence not available and not claimed
+- Existing custom contour artwork exported unchanged from `public/favicon.svg`.
+- PNG, 512 × 512 px, 21,862 bytes.
+- Meets the stated 128–2048 px and maximum 2 MB upload limits.
 
-- A qualified official Bradbury Phase 2 GenLayer node RPC with the required `gen_*` methods.
-- A WeatherPact contract address, deployment transaction, explorer link, or deployed-source verification.
-- A measured/validated live WeatherPact fee profile, successful execution result, finalized transaction, or live consensus/weather-resolution record.
-- A connected on-chain frontend demonstration. The public website is preview-only.
+## 02 — Project summary
 
-After an official endpoint becomes available, configure only its public URL and run `npm run verify:network`. Do not sign or deploy unless the unchanged guard passes. A later genuine deployment can support a separate, non-duplicate Contract Deployed contribution with its actual transaction/address evidence.
+**One-liner — 172/180 characters**
 
-## Review and later changes
+> WeatherPact is a preview-stage GenLayer DApp for measurable daily weather pacts, using fixed Open-Meteo evidence and validator consensus without stakes, payouts, or tokens.
 
-The published submission guide permits editing only while a submission is **Pending Review** or **More Information Needed**. Notes, dates, and evidence can then be changed; the contribution type can be changed only while pending. Editing returns it to Pending Review and does not require reCAPTCHA. Accepted contributions are permanent and cannot be edited or deleted through that flow. A rejected submission requires a new submission and a new reCAPTCHA. Do not submit the same repository contribution twice.
+## 03 — Project overview
 
-## Portal inspection record
+**Description — 988/1000 characters**
 
-Read-only browser inspections in GitHub Actions runs [40000484631](https://github.com/timmyspurs12/WeatherPact/actions/runs/40000484631) and [40001039453](https://github.com/timmyspurs12/WeatherPact/actions/runs/40001039453) checked the current public Builders, Contribute, and Project Explorer navigation. **Become a Builder** opened the Portal's sign-in dialog, which states that sign-in asks for a signature; public navigation exposed no application form fields. No wallet connection, authentication, signature, form submission, deployment, or production change occurred. The field rules above therefore come from the published GenLayer Points guides, not from assumptions about the signature-gated form.
+> WeatherPact is a preview-stage DApp for measurable daily weather pacts. A creator chooses a place, local date, metric, threshold, and YES/NO prediction. The Python Intelligent Contract stores pacts, resolves outcomes, and tracks non-financial reputation. It constructs a fixed Open-Meteo Historical Weather API request from validated fields; validators independently fetch and normalize evidence before numerical comparison. The React frontend has real wallet/contract and isolated preview adapters with finality, execution, and recovery checks. The website is preview-only: no deployed contract, transaction, on-chain record, or live consensus result is claimed, and genuine writes are disabled. There are no stakes, payments, payouts, tokens, insurance, or off-chain outcome database. Historical weather data may be model-derived or reanalysis-based, not necessarily a direct local station measurement. Validator agreement on one provider is not independent multi-provider verification.
+
+## 04 — Demo video
+
+**Demo URL:** leave blank. No public demo video is claimed or supplied.
+
+## 05 — How-to
+
+### Step 1 — Open the preview
+
+Open https://weatherpact.vercel.app. Confirm the **Preview mode** banner, “Illustrative records only. No on-chain writes,” and **Contract not connected** status.
+
+### Step 2 — Inspect illustrative records
+
+Open **Pact Explorer**. Try the search and status/metric/date filters, then open a pact and expand **Evidence details**. Treat every displayed record as illustrative, not chain evidence.
+
+### Step 3 — Review the creation flow
+
+Open **Create a Pact**. Complete **Place & date**, **Condition**, and **Prediction**; confirm the dataset and transaction notes, then choose **Review transaction**. Confirm that **Contract not connected** appears and **Create on GenLayer** is disabled. Do not connect a wallet or sign.
+
+### Step 4 — Inspect the real integration boundary
+
+In the repository, inspect `src/client/genlayer-client.ts`, `src/client/network.ts`, `src/client/preview-client.ts`, and `contracts/weatherpact.py`. Confirm that the real GenLayer adapter and network guard are separate from the isolated preview adapter.
+
+### Step 5 — Run local verification
+
+Follow the README's **Contract setup and checks** section for the pinned Python environment and GenVM checks. For the JavaScript side, run:
+
+```bash
+npm ci
+npm run test:client
+npm run test:network
+npm run build
+```
+
+These checks validate source and local behavior; they do not create a deployment or live consensus evidence.
+
+## 06 — Review verification
+
+**Expected verification outcome — 464/500 characters**
+
+> The site shows "Preview mode," "Contract not connected," illustrative records, and disabled genuine writes. The repository contains the real adapter, guard, contract, and tests. Local checks yield 38 Direct Mode passes, 3 GenVM lint passes, 5 journal and 7 network test passes, and a strict TypeScript/Vite build. This verifies source and preview behavior only, not a live deployment, transaction, consensus result, or the form's genuine contract-call quality bar.
+
+- **Contract link 1:** leave blank.
+- **Additional deployments:** do not add any.
+
+## 07 — Project links and evidence
+
+- **Website — required:** https://weatherpact.vercel.app
+- **GitHub:** https://github.com/timmyspurs12/WeatherPact
+
+Add the repository as the required evidence item and allow the Portal to auto-detect **GitHub Repository**. The following supporting items use stable commit-pinned source URLs:
+
+| Evidence type     | What it proves — and does not prove                                                                | URL                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| GitHub Repository | Public source, documentation, and commit history; not a deployment.                                | https://github.com/timmyspurs12/WeatherPact                                                                                |
+| GitHub File       | README architecture, local validation, limitations, and missing node RPC.                          | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/README.md                        |
+| GitHub File       | Python Intelligent Contract and fixed Open-Meteo request logic.                                    | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/contracts/weatherpact.py         |
+| GitHub File       | Real wallet/contract adapter and transaction lifecycle implementation; not a live execution proof. | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/src/client/genlayer-client.ts    |
+| GitHub File       | Direct Mode tests; local validation only.                                                          | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/tests/direct/test_weatherpact.py |
+
+## Quality-bar warning and missing evidence
+
+The following must remain explicit in any reviewer discussion:
+
+- No qualified official Bradbury Phase 2 GenLayer node RPC with required `gen_*` methods has been found.
+- There is no WeatherPact contract address, deployment transaction, explorer link, or deployed-source verification.
+- There is no measured/validated live WeatherPact fee profile, successful execution result, finalized transaction, or live consensus/weather-resolution record.
+- The public website does not currently demonstrate the form's genuine contract-call quality-bar item. Its real adapter is source evidence, not live proof.
+- Historical weather evidence may be model-derived or reanalysis-based. Validator agreement on one Open-Meteo response is not independent multi-provider verification.
+
+After an official endpoint becomes available, configure only its public URL and run `npm run verify:network`. Do not sign or deploy unless the unchanged guard passes. Update this packet with the actual deployment and verification evidence only after those facts exist.
+
+## Review and later evidence
+
+Use the Project form's rules, not the older general contribution workflow:
+
+- **More information:** update the existing submission; no additional slot.
+- **Rejection:** fixes or new evidence require a new submission and another weekly slot.
+- **Appeal:** challenges the original decision with the work as submitted; no additional slot.
+- **Milestone:** only after a project has been accepted for Project Explorer; cosmetic changes do not qualify.
+
+No wallet connection, authentication, signature, Portal submission, deployment, or production change was performed while preparing this packet.
