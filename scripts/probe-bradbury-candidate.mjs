@@ -186,112 +186,125 @@ function pointerSummary(probe) {
   }
 }
 
-const candidate = {};
-const chain = {};
-for (const [role, url, store] of [
-  ['candidate node', nodeUrl, candidate],
-  ['underlying chain', chainUrl, chain],
-]) {
-  store.chainId = await rawRpc(`${role} — eth_chainId`, url, 'eth_chainId');
-  store.genesis = await rawRpc(`${role} — eth_getBlockByNumber(0)`, url, 'eth_getBlockByNumber', [
-    '0x0',
-    false,
-  ]);
-  store.managerCode = await rawRpc(`${role} — eth_getCode(AddressManager)`, url, 'eth_getCode', [
-    expected.addressManager,
-    'latest',
-  ]);
-  store.managerPointer = await rawRpc(
-    `${role} — eth_call(ConsensusMain.getAddressManager)`,
-    url,
-    'eth_call',
-    [{ to: consensusAddress, data: managerPointerData }, 'latest'],
+const mode = process.argv[2] ?? 'all';
+if (!['identity', 'gen', 'cors', 'all'].includes(mode)) {
+  throw new Error(`Unknown probe mode: ${mode}`);
+}
+
+if (mode === 'identity' || mode === 'all') {
+  const candidate = {};
+  const chain = {};
+  for (const [role, url, store] of [
+    ['candidate node', nodeUrl, candidate],
+    ['underlying chain', chainUrl, chain],
+  ]) {
+    store.chainId = await rawRpc(`${role} — eth_chainId`, url, 'eth_chainId');
+    store.genesis = await rawRpc(`${role} — eth_getBlockByNumber(0)`, url, 'eth_getBlockByNumber', [
+      '0x0',
+      false,
+    ]);
+    store.managerCode = await rawRpc(`${role} — eth_getCode(AddressManager)`, url, 'eth_getCode', [
+      expected.addressManager,
+      'latest',
+    ]);
+    store.managerPointer = await rawRpc(
+      `${role} — eth_call(ConsensusMain.getAddressManager)`,
+      url,
+      'eth_call',
+      [{ to: consensusAddress, data: managerPointerData }, 'latest'],
+    );
+  }
+
+  const candidateCode = resultOf(candidate.managerCode);
+  const chainCode = resultOf(chain.managerCode);
+  emit('Identity summary', {
+    expected,
+    consensusMain: consensusAddress,
+    candidate: {
+      chainIdHex: resultOf(candidate.chainId),
+      chainIdDecimal:
+        typeof resultOf(candidate.chainId) === 'string'
+          ? Number(resultOf(candidate.chainId))
+          : null,
+      chainIdRpcError: candidate.chainId?.json?.error ?? null,
+      genesisHash: resultOf(candidate.genesis)?.hash ?? null,
+      genesisRpcError: candidate.genesis?.json?.error ?? null,
+      addressManagerCode: codeSummary(candidate.managerCode),
+      consensusMainAddressManager: pointerSummary(candidate.managerPointer),
+    },
+    underlyingChain: {
+      chainIdHex: resultOf(chain.chainId),
+      chainIdDecimal:
+        typeof resultOf(chain.chainId) === 'string' ? Number(resultOf(chain.chainId)) : null,
+      chainIdRpcError: chain.chainId?.json?.error ?? null,
+      genesisHash: resultOf(chain.genesis)?.hash ?? null,
+      genesisRpcError: chain.genesis?.json?.error ?? null,
+      addressManagerCode: codeSummary(chain.managerCode),
+      consensusMainAddressManager: pointerSummary(chain.managerPointer),
+    },
+    addressManagerCodeComparison: {
+      bothReturnedStrings: typeof candidateCode === 'string' && typeof chainCode === 'string',
+      exactlyEqual:
+        typeof candidateCode === 'string' && typeof chainCode === 'string'
+          ? candidateCode.toLowerCase() === chainCode.toLowerCase()
+          : null,
+    },
+  });
+}
+
+if (mode === 'gen' || mode === 'all') {
+  const source = await readFile('contracts/weatherpact.py', 'utf8');
+  const sourceBase64 = Buffer.from(source, 'utf8').toString('base64');
+  emit('Source schema request identity', {
+    method: 'gen_getContractSchema',
+    parameterStructure: [{ code: '<base64-encoded UTF-8 contract source>' }],
+    sourcePath: 'contracts/weatherpact.py',
+    sourceUtf8Bytes: Buffer.byteLength(source, 'utf8'),
+    sourceBase64Characters: sourceBase64.length,
+    sourceSha256: createHash('sha256').update(source, 'utf8').digest('hex'),
+  });
+
+  const client = createClient({ chain: testnetBradbury, endpoint: nodeUrl });
+  await sdkProbe('SDK gen_getContractSchema — full WeatherPact source', () =>
+    client.getContractSchemaForCode(source),
+  );
+  await sdkProbe('SDK gen_call — zero-address method-availability diagnostic only', () =>
+    client.readContract({
+      address: '0x0000000000000000000000000000000000000000',
+      functionName: 'get_metadata',
+      args: [],
+      transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+    }),
   );
 }
 
-const candidateCode = resultOf(candidate.managerCode);
-const chainCode = resultOf(chain.managerCode);
-emit('Identity summary', {
-  expected,
-  consensusMain: consensusAddress,
-  candidate: {
-    chainIdHex: resultOf(candidate.chainId),
-    chainIdDecimal:
-      typeof resultOf(candidate.chainId) === 'string' ? Number(resultOf(candidate.chainId)) : null,
-    chainIdRpcError: candidate.chainId?.json?.error ?? null,
-    genesisHash: resultOf(candidate.genesis)?.hash ?? null,
-    genesisRpcError: candidate.genesis?.json?.error ?? null,
-    addressManagerCode: codeSummary(candidate.managerCode),
-    consensusMainAddressManager: pointerSummary(candidate.managerPointer),
-  },
-  underlyingChain: {
-    chainIdHex: resultOf(chain.chainId),
-    chainIdDecimal:
-      typeof resultOf(chain.chainId) === 'string' ? Number(resultOf(chain.chainId)) : null,
-    chainIdRpcError: chain.chainId?.json?.error ?? null,
-    genesisHash: resultOf(chain.genesis)?.hash ?? null,
-    genesisRpcError: chain.genesis?.json?.error ?? null,
-    addressManagerCode: codeSummary(chain.managerCode),
-    consensusMainAddressManager: pointerSummary(chain.managerPointer),
-  },
-  addressManagerCodeComparison: {
-    bothReturnedStrings: typeof candidateCode === 'string' && typeof chainCode === 'string',
-    exactlyEqual:
-      typeof candidateCode === 'string' && typeof chainCode === 'string'
-        ? candidateCode.toLowerCase() === chainCode.toLowerCase()
-        : null,
-  },
-});
-
-const source = await readFile('contracts/weatherpact.py', 'utf8');
-const sourceBase64 = Buffer.from(source, 'utf8').toString('base64');
-emit('Source schema request identity', {
-  method: 'gen_getContractSchema',
-  parameterStructure: [{ code: '<base64-encoded UTF-8 contract source>' }],
-  sourcePath: 'contracts/weatherpact.py',
-  sourceUtf8Bytes: Buffer.byteLength(source, 'utf8'),
-  sourceBase64Characters: sourceBase64.length,
-  sourceSha256: createHash('sha256').update(source, 'utf8').digest('hex'),
-});
-
-const client = createClient({ chain: testnetBradbury, endpoint: nodeUrl });
-await sdkProbe('SDK gen_getContractSchema — full WeatherPact source', () =>
-  client.getContractSchemaForCode(source),
-);
-await sdkProbe('SDK gen_call — zero-address method-availability diagnostic only', () =>
-  client.readContract({
-    address: '0x0000000000000000000000000000000000000000',
-    functionName: 'get_metadata',
-    args: [],
-    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
-  }),
-);
-
-try {
-  const preflight = await fetch(nodeUrl, {
-    method: 'OPTIONS',
-    headers: {
-      Origin: origin,
-      'Access-Control-Request-Method': 'POST',
-      'Access-Control-Request-Headers': 'content-type',
-    },
-    signal: AbortSignal.timeout(20_000),
-  });
-  const body = await preflight.text();
-  emit('Candidate browser CORS preflight', {
-    request: {
+if (mode === 'cors' || mode === 'all') {
+  try {
+    const preflight = await fetch(nodeUrl, {
       method: 'OPTIONS',
-      origin,
-      accessControlRequestMethod: 'POST',
-      accessControlRequestHeaders: 'content-type',
-    },
-    httpStatus: `${preflight.status} ${preflight.statusText}`.trim(),
-    responseHeaders: selectedHeaders(preflight),
-    responseBody: body || '<empty body>',
-  });
-} catch (error) {
-  emit('Candidate browser CORS preflight', {
-    transportError: error instanceof Error ? error.message : String(error),
-  });
+      headers: {
+        Origin: origin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+      signal: AbortSignal.timeout(20_000),
+    });
+    const body = await preflight.text();
+    emit('Candidate browser CORS preflight', {
+      request: {
+        method: 'OPTIONS',
+        origin,
+        accessControlRequestMethod: 'POST',
+        accessControlRequestHeaders: 'content-type',
+      },
+      httpStatus: `${preflight.status} ${preflight.statusText}`.trim(),
+      responseHeaders: selectedHeaders(preflight),
+      responseBody: body || '<empty body>',
+    });
+  } catch (error) {
+    emit('Candidate browser CORS preflight', {
+      transportError: error instanceof Error ? error.message : String(error),
+    });
+  }
+  await rawRpc('Candidate browser-origin POST diagnostic', nodeUrl, 'eth_chainId', [], { origin });
 }
-await rawRpc('Candidate browser-origin POST diagnostic', nodeUrl, 'eth_chainId', [], { origin });

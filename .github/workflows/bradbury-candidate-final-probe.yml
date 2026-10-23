@@ -31,8 +31,12 @@ jobs:
           ./node_modules/.bin/genlayer --version
           ./node_modules/.bin/genlayer network set testnet-bradbury
           ./node_modules/.bin/genlayer network info
-      - name: Capture raw candidate, chain, SDK, and CORS responses
-        run: node scripts/probe-bradbury-candidate.mjs
+      - name: Capture raw candidate and chain identity responses
+        run: node scripts/probe-bradbury-candidate.mjs identity
+      - name: Capture pinned-SDK GenLayer responses
+        run: node scripts/probe-bradbury-candidate.mjs gen
+      - name: Capture candidate browser CORS responses
+        run: node scripts/probe-bradbury-candidate.mjs cors
       - name: Run the unchanged read-only qualification guard
         if: always()
         env:
