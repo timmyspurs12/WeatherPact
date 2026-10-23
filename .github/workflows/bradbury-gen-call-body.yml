@@ -1,0 +1,25 @@
+name: Capture Bradbury gen_call body
+
+on:
+  push:
+    branches:
+      - arena/c6a5a95b-weatherpact
+    paths:
+      - .github/workflows/bradbury-gen-call-body.yml
+      - scripts/capture-bradbury-gen-call.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/capture-bradbury-gen-call.mjs
