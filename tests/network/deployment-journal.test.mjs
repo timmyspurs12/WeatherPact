@@ -108,6 +108,14 @@ test('rejects malformed journals and unsafe repository journal locations', () =>
       () => deploymentJournalPath('deployment.json', '/home/user/WeatherPact'),
       /outside the repository or under ignored \.secrets/,
     );
+    assert.throws(
+      () => deploymentJournalPath('', '/home/user/WeatherPact'),
+      /outside the repository/,
+    );
+    assert.throws(
+      () => deploymentJournalPath('..data', '/home/user/WeatherPact'),
+      /outside the repository/,
+    );
     assert.equal(
       deploymentJournalPath('.secrets/deployment.json', '/home/user/WeatherPact'),
       '/home/user/WeatherPact/.secrets/deployment.json',

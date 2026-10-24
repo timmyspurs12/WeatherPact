@@ -6,7 +6,7 @@ import {
   renameSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 export const DEPLOYMENT_HASH = /^0x[0-9a-fA-F]{64}$/;
 const ANSI = /\u001b\[[0-?]*[ -/]*[@-~]/g;
@@ -36,10 +36,11 @@ export function deploymentHashFromOutput(value) {
 }
 
 export function deploymentJournalPath(value, cwd = process.cwd()) {
-  const path = resolve(value ?? '.secrets/weatherpact-deployment.json');
-  const rel = relative(cwd, path);
-  const insideRepository = rel && !rel.startsWith('..') && !isAbsolute(rel);
-  if (insideRepository && !rel.startsWith('.secrets/')) {
+  const root = resolve(cwd);
+  const path = resolve(root, value ?? '.secrets/weatherpact-deployment.json');
+  const rel = relative(root, path);
+  const outsideRepository = rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+  if (!outsideRepository && !rel.startsWith('.secrets/')) {
     throw new Error(
       'Deployment journals must be outside the repository or under ignored .secrets/.',
     );
