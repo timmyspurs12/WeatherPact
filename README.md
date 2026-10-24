@@ -12,7 +12,7 @@ The contract fetches Open-Meteo Historical Weather API evidence inside GenLayer'
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Intelligent Contract               | Stable GenVM `v0.2.16` lint/schema validation and 38/38 Direct Mode tests pass in hosted CI                 |
 | Real frontend adapter              | Ported to stable `genlayer-js@1.1.8`; strict TypeScript and production build pass                           |
-| Local guard tests                  | 5 transaction-journal tests and 12 network-verification tests pass against the stable SDK                   |
+| Local guard tests                  | 5 transaction-journal tests and 15 network/deployment-safety tests pass against the stable SDK              |
 | Live Studionet qualification       | **Read-only source-schema guard passed** in Actions run `40118011162`; deployed-contract checks are pending |
 | Previous Bradbury target           | Paused by the missing qualified node RPC and faucet eligibility; not substituted silently                   |
 | Contract deployment                | **Not performed**; no deployment address or transaction is claimed                                          |
@@ -127,7 +127,7 @@ The requirements select the stable Studio `v0.121.6` testing family: `genlayer-p
 
 Current migration results:
 
-- **5/5 journal tests and 12/12 network guard tests passed** with stable `genlayer-js@1.1.8`.
+- **5/5 journal tests and 15/15 network/deployment-safety tests passed** with stable `genlayer-js@1.1.8`.
 - **Strict TypeScript and Vite production build passed** after removing RC-only fee/finality APIs.
 - **Hosted stable qualification passed** in [Actions run 40118011162](https://github.com/timmyspurs12/WeatherPact/actions/runs/40118011162): GenVM `v0.2.16` lint and semantic schema validation, **38/38 Direct Mode tests**, stable frontend checks, and the read-only Studionet source-schema guard with all seven required methods.
 
@@ -195,10 +195,10 @@ The Bradbury guard retains its independent node/chain RPC, genesis, AddressManag
    npm run verify:network
    ```
 
-4. Only after it passes and the selected account has the required test GEN, deploy with the pinned CLI. The wrapper selects the matching built-in CLI alias after qualification. Use `--wallet browser` for browser signing, or omit it to use the configured encrypted account. `--rpc` and `--contract` overrides are rejected.
+4. Only after it passes and the selected account has the required test GEN, deploy with the pinned CLI and configured encrypted account. The wrapper selects the matching built-in CLI alias after qualification, rejects RPC/contract/manual-fee/password overrides, and records the returned transaction ID in an ignored or external journal immediately. Browser users sign subsequent pact writes with their own connected wallet; no browser signer is embedded in this deployment flow.
 
    ```bash
-   npm run deploy:contract -- --wallet browser
+   npm run deploy:contract
    ```
 
    The stable browser adapter uses `genlayer-js@1.1.8` `writeContract` with `value: 0n` and the documented network/wallet fee path. RC-only `estimateTransactionFeesForWrite` and fee overrides are not available in that release and are not emulated. No live fee measurement or write has occurred here.
@@ -215,6 +215,8 @@ The Bradbury guard retains its independent node/chain RPC, genesis, AddressManag
    npm run verify:network -- --require-contract
    npm run build
    ```
+
+For GitHub-hosted execution, `.github/workflows/studionet-deployment.yml` is manual-dispatch only. It requires the approved full commit SHA and contract SHA-256, rechecks the public account address and positive balance, records the transaction immediately, resumes that same ID through stable finality/execution checks, and then verifies deployed code/schema/`gen_call`. A new submission uses the repository secrets `WEATHERPACT_STUDIONET_KEYSTORE` and `WEATHERPACT_STUDIONET_KEYSTORE_PASSWORD`; entering `deployment_tx` instead resumes read-only without either secret. Public evidence artifacts exclude key material. The workflow has not been run.
 
 Any identity mismatch, missing method, malformed response, unreachable endpoint, missing credentials/funds, or signing failure stops the flow. Do not bypass the guard. The existing CLI wallet has test GEN on Studionet and read-only stable source qualification has passed; no deployment, deployed-contract qualification, or on-chain write has been attempted.
 

@@ -3,6 +3,11 @@ import { createClient } from 'genlayer-js';
 import { studionet, testnetBradbury } from 'genlayer-js/chains';
 import { ExecutionResult, TransactionStatus } from 'genlayer-js/types';
 import { getAddress } from 'viem';
+import {
+  appendDeploymentOutput,
+  deploymentJournalPath,
+  recordFinalizedDeployment,
+} from './lib/deployment.mjs';
 
 const profiles = {
   studionet: {
@@ -82,6 +87,18 @@ if (!rawAddress) {
   throw new Error(`Deployment ${hash} finalized successfully but returned no contract address.`);
 }
 const contractAddress = getAddress(rawAddress);
+const journalPath = deploymentJournalPath(process.env.WEATHERPACT_DEPLOYMENT_JOURNAL);
+recordFinalizedDeployment(journalPath, {
+  network: profile.key,
+  chainId: profile.chainId,
+  nodeRpcUrl: endpoint,
+  contractSourceSha256: process.env.WEATHERPACT_CONTRACT_SOURCE_SHA256 || null,
+  transactionHash: hash,
+  contractAddress,
+});
+appendDeploymentOutput('transaction_hash', hash);
+appendDeploymentOutput('contract_address', contractAddress);
+appendDeploymentOutput('deployment_journal', journalPath);
 console.log(
   JSON.stringify(
     {

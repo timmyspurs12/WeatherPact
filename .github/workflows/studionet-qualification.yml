@@ -18,6 +18,8 @@ on:
       - 'scripts/verify-network.mjs'
       - 'scripts/deploy.mjs'
       - 'scripts/finalize-deployment.mjs'
+      - 'scripts/verify-deployment-account.mjs'
+      - 'scripts/lib/**'
       - 'src/client/**'
       - 'package.json'
       - 'package-lock.json'

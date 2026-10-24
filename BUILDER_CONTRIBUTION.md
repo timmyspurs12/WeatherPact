@@ -167,7 +167,7 @@ The following must remain explicit in any reviewer discussion:
 - The public website does not currently demonstrate the form's genuine contract-call quality-bar item. Its real adapter is source evidence, not live proof.
 - Historical weather evidence may be model-derived or reanalysis-based. Validator agreement on one Open-Meteo response is not independent multi-provider verification.
 
-The active Studionet source guard has passed, but sandbox RPC egress prevents deployment from this environment. Deployment requires user-local execution or an explicitly approved, secured GitHub Actions signer path; no wallet secret has been uploaded. Update this packet with actual deployment and verification evidence only after those facts exist.
+The active Studionet source guard has passed, but sandbox RPC egress prevents deployment from this environment. The account owner explicitly selected a secured GitHub Actions signer path, and `.github/workflows/studionet-deployment.yml` now provides a manual-only guarded deployment/resume workflow. The GitHub integration then returned HTTP 403 for the Actions-secrets public key, so **no keystore or password was uploaded and the workflow has not run**. GitHub must be reconnected with Actions-secrets access before secret upload or deployment can continue. Update this packet with actual deployment and verification evidence only after those facts exist.
 
 ## Review and later evidence
 
