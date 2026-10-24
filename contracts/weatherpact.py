@@ -5,8 +5,7 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-import genlayer as gl
-from genlayer import allow_storage
+from genlayer import gl, allow_storage
 
 
 SOURCE_NAME = "Open-Meteo Historical Weather API"
