@@ -6,7 +6,11 @@ Prepared 2026-10-23 from the account owner's Project form and updated after the 
 
 **C:** the reviewer explicitly requires deployment to a supported public GenLayer network and a reproducible runtime transaction sequence. The reviewer states that source and Direct Mode tests do not independently establish successful runtime execution. Optional contract links on the initial form therefore did not establish acceptance of a pre-deployment Project.
 
-The review says “supported public GenLayer network,” not Bradbury specifically. WeatherPact's unchanged project target and qualification guard nevertheless permit only **Bradbury Phase 2**; Studio, Studio Dev, a rejected endpoint, or a relabeled network is not an authorized substitute. The immediate missing external capability is a qualified Phase 2 GenLayer node RPC with the required `gen_*` methods and the exact Phase 2 identity.
+The review says “supported public GenLayer network,” not Bradbury specifically. The account owner initially required Bradbury, then explicitly authorized a **Studionet** pivot on 2026-10-24 because the Bradbury faucet's 0.01 ETH eligibility requirement was unavailable. This supersedes the earlier Bradbury-only restriction. Studio Dev, local networks, rejected endpoints, and relabeled networks remain unauthorized.
+
+The active target is stable hosted **Studionet**, chain ID `61999`, using its official `https://studio.genlayer.com/api` RPC. A separate strict profile preserves Bradbury's checks rather than weakening them. Studionet state may reset, reviewer acceptance of this substitute has not been guaranteed, and every resulting record must be labelled Studionet.
+
+After stable Studio rejected the Phase 2 RC source with `invalid_contract`, the account owner explicitly authorized a stable-Studionet port. The working source now declares GenVM `v0.2.16` and the stable Studio `v0.121.6` runner dependency, with `genlayer-py==0.9.0`, `genlayer-test==0.24.0`, `genvm-linter==0.7.1`, `genlayer-js==1.1.8`, and CLI `0.39.2`. Stable JavaScript fixtures and the strict build pass locally; stable Python lint/Direct Mode and hosted source-schema qualification remain pending. No successful hosted qualification of the migrated source, deployment, or runtime result is claimed in this revision.
 
 The application fields below are preserved as the truthful pre-deployment record. Do not resubmit them as runtime evidence or claim that the live contract-call quality bar has been demonstrated.
 
@@ -113,9 +117,9 @@ Add the repository as the required evidence item and allow the Portal to auto-de
 
 This is a future evidence plan, not a claim that any step has run. Do not begin signing or deployment until the read-only guard passes and the account owner explicitly authorizes the signer, funds, and fee path.
 
-1. **Qualify the exact source and network.** Configure the actual qualified node URL as `GENLAYER_NODE_RPC_URL` in the ignored `.env`, keep the independent Bradbury chain RPC configured, and run `npm run verify:network`. Record the repository commit and `sha256sum contracts/weatherpact.py`. Stop on any identity, manager, code, schema, or `gen_call` failure.
+1. **Qualify the exact source and selected network.** For the active pivot, select `GENLAYER_NETWORK=studionet` and the official `https://studio.genlayer.com/api` RPC in the ignored `.env`; do not configure Bradbury's chain RPC for it. Run `npm run verify:network`. Record the repository commit and `sha256sum contracts/weatherpact.py`. Stop on any identity, schema, deployed-code, or `gen_call` failure. Bradbury retains its separate chain-RPC, genesis, and AddressManager checks if selected later.
 
-2. **Deploy the exact reviewed contract.** After explicit authorization, use the existing guarded deployment wrapper and pinned release family. Record the returned GenLayer transaction ID immediately. Resume tracking that same transaction after uncertainty; never blindly deploy twice. Wait for the intended finality point and verify execution with the SDK success check. Record the actual contract address only after successful execution.
+2. **Deploy the exact reviewed contract.** After explicit authorization, use the existing guarded deployment wrapper and pinned release family. Record the returned GenLayer transaction ID immediately. Resume tracking that same transaction after uncertainty; never blindly deploy twice. Wait for `FINALIZED` and require `FINISHED_WITH_RETURN` through the stable SDK. Record the actual contract address only after successful execution.
 
 3. **Verify the deployment before writes.** Configure that actual address and run `npm run verify:network -- --require-contract`. Preserve deployed code/schema evidence, the `get_metadata` read, transaction ID, contract address, and supported explorer links. Accepted or finalized status alone is not successful execution.
 
@@ -129,7 +133,7 @@ This is a future evidence plan, not a claim that any step has run. Do not begin 
 
 8. **Publish the evidence package.** Include the repository commit, contract source digest, exact inputs, public creator address, deployment/creation/resolution transaction IDs, supported explorer links, final `get_pact`, `get_reputation`, `get_activity`, and `get_metadata` responses, plus the commands needed to reproduce the reads. Add these facts to the Portal only after they exist.
 
-## Documented self-hosted alternative
+## Former Bradbury blocker and documented self-hosted alternative
 
 The official [network documentation](https://docs.genlayer.com/developers/networks) permits either a Phase 2 node RPC published in the release announcement or **your own qualified node**. It explicitly distinguishes the GenLayer node RPC from the Conduit chain RPC.
 

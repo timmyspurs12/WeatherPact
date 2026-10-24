@@ -11,7 +11,13 @@ on:
     paths:
       - '.github/workflows/studionet-qualification.yml'
       - 'contracts/weatherpact.py'
+      - 'requirements.txt'
+      - 'tests/direct/**'
+      - 'tests/client/**'
+      - 'tests/network/**'
       - 'scripts/verify-network.mjs'
+      - 'scripts/deploy.mjs'
+      - 'scripts/finalize-deployment.mjs'
       - 'src/client/**'
       - 'package.json'
       - 'package-lock.json'
@@ -24,7 +30,54 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  contract:
+    name: Stable contract compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GENVMROOT: ${{ github.workspace }}/.stable-genvm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize the stable GenVM SDK, not latest or an RC
+        uses: actions/checkout@v4
+        with:
+          repository: genlayerlabs/genvm
+          ref: v0.2.16
+          path: .stable-genvm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install the pinned stable Python family
+        run: python -m pip install -r requirements.txt
+      - name: Run stable lint and semantic schema validation
+        run: |
+          set +e
+          output=$(genvm-lint check contracts/weatherpact.py 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            encoded=$(printf '%s\n' "$output" | tail -40 | base64 -w0)
+            echo "::error::Stable contract lint/validation failed; base64 diagnostics: ${encoded}"
+            exit "$status"
+          fi
+      - name: Run all Direct Mode behavior tests on GenVM v0.2.16
+        run: |
+          set +e
+          output=$(python -m pytest tests/direct -q 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            encoded=$(printf '%s\n' "$output" | tail -60 | base64 -w0)
+            echo "::error::Stable Direct Mode tests failed; base64 diagnostics: ${encoded}"
+            exit "$status"
+          fi
+
   verify:
+    name: Stable frontend and hosted Studionet guard
+    needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,9 +87,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Run the local network fixtures
-        run: npm run test:network
-      - name: Inspect the pinned CLI and built-in Studionet profile
+      - name: Run client and network fixtures
+        run: |
+          npm run test:client
+          npm run test:network
+      - name: Run the strict production build
+        run: npm run build
+      - name: Inspect the pinned stable CLI and built-in Studionet profile
         run: |
           ./node_modules/.bin/genlayer --version
           ./node_modules/.bin/genlayer network set studionet

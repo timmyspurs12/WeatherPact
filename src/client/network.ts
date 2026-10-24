@@ -168,14 +168,20 @@ export async function verifyNetworkProfile(
   // Studio consensus configuration is static in the pinned SDK/CLI. Do not
   // assume its RPC exposes EVM bytecode at that address. Deployed WeatherPact
   // code/schema and the subsequent metadata gen_call remain mandatory.
-  const contractCode = await nodeRpc(endpoint, 'gen_getContractCode', [
-    { address: contractAddress },
-  ]);
+  const contractCode = await nodeRpc(
+    endpoint,
+    'gen_getContractCode',
+    profile.key === 'studionet' ? [contractAddress] : [{ address: contractAddress }],
+  );
   if (typeof contractCode !== 'string' || !contractCode) {
     throw new Error('The configured WeatherPact contract code is unavailable on this node.');
   }
   const schema = record(
-    await nodeRpc(endpoint, 'gen_getContractSchema', [{ code: contractCode }]),
+    await nodeRpc(
+      endpoint,
+      'gen_getContractSchema',
+      profile.key === 'studionet' ? [contractAddress] : [{ code: contractCode }],
+    ),
     'WeatherPact schema lookup',
   );
   const methods = record(schema.methods, 'WeatherPact schema');

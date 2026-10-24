@@ -17,7 +17,7 @@ from tests.direct.conftest import (
 def deploy(direct_vm, direct_deploy, sender):
     direct_vm.warp(CREATE_TIME)
     direct_vm.sender = sender
-    return direct_deploy(CONTRACT)
+    return direct_deploy(CONTRACT, sdk_version="v0.2.16")
 
 
 def test_creation_uses_actual_sender_and_normalized_inputs(

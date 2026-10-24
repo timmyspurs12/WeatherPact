@@ -16,7 +16,8 @@ const methods = Object.fromEntries(
     'get_metadata',
   ].map((name) => [name, { readonly: name.startsWith('get_') }]),
 );
-const METADATA_RESULT = '0x16046e616d655c57656174686572506163740776657273696f6e09';
+// Stable genlayer-js prefixes gen_call hex results after reading the RPC response.
+const METADATA_RESULT = '16046e616d655c57656174686572506163740776657273696f6e09';
 const state = {
   nodeChain: BRADBURY.chainIdHex,
   chainChain: BRADBURY.chainIdHex,
@@ -175,6 +176,16 @@ test('qualifies Studionet with its own chain, pinned profile, and source schema'
     state.calls.some((call) => call.startsWith('chain:')),
     false,
   );
+});
+
+test('verifies a Studionet deployment through code, schema, and gen_call', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  const result = await verifyStudio({ contractAddress: STUDIONET.consensusAddress });
+  assert.equal(result.network, 'studionet');
+  assert.equal(result.contractAddress, STUDIONET.consensusAddress);
+  assert.ok(state.calls.includes('node:gen_getContractCode'));
+  assert.ok(state.calls.includes('node:gen_getContractSchema'));
+  assert.ok(state.calls.includes('node:gen_call'));
 });
 
 test('stops Studionet on a chain mismatch before schema work', async () => {
