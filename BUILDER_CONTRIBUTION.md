@@ -1,14 +1,14 @@
-# WeatherPact Project contribution packet
+# WeatherPact Project review and evidence plan
 
-Prepared 2026-10-23 from the account owner's current **Project** form. **No Portal submission has been made.**
+Prepared 2026-10-23 from the account owner's Project form and updated after the account owner supplied the reviewer response. The account owner made the Portal submission; the agent did not.
 
 ## Outcome and boundary
 
-**B at the form/evidence level:** the Project form does not require a contract link and does not state a Bradbury-only deployment requirement. A truthful pre-deployment Project submission can therefore be prepared with the required website and GitHub evidence. This is not a guarantee of steward acceptance.
+**C:** the reviewer explicitly requires deployment to a supported public GenLayer network and a reproducible runtime transaction sequence. The reviewer states that source and Direct Mode tests do not independently establish successful runtime execution. Optional contract links on the initial form therefore did not establish acceptance of a pre-deployment Project.
 
-The same form sets a strict quality bar: **“Frontend genuinely calls the contract and handles the full transaction lifecycle.”** WeatherPact contains a real adapter and lifecycle implementation, but the current public website is preview-only and does not prove a live contract call. Do not claim that this quality-bar item has been demonstrated. Submitting now carries the form's stated rejection and weekly-slot consequences.
+The review says “supported public GenLayer network,” not Bradbury specifically. WeatherPact's unchanged project target and qualification guard nevertheless permit only **Bradbury Phase 2**; Studio, Studio Dev, a rejected endpoint, or a relabeled network is not an authorized substitute. The immediate missing external capability is a qualified Phase 2 GenLayer node RPC with the required `gen_*` methods and the exact Phase 2 identity.
 
-This Project-specific packet supersedes the earlier general repository-only packet. It does not use the closed hackathon rules or treat optional contract links as proof of deployment.
+The application fields below are preserved as the truthful pre-deployment record. Do not resubmit them as runtime evidence or claim that the live contract-call quality bar has been demonstrated.
 
 ## Project form requirements established
 
@@ -21,7 +21,7 @@ This Project-specific packet supersedes the earlier general repository-only pack
 - More-information requests update the existing submission without another slot. Fixes or new evidence after rejection require a new submission and another slot. An appeal challenges only the original decision and does not use a slot.
 - Reviews take one to two weeks. The form warns that new contributions may miss the Season 1 snapshot and instead count toward Season 2.
 
-The account owner's pasted form showed **1 of 2 Project slots used**, resetting Monday at 00:00 UTC. Do not spend the remaining slot on an overstated application.
+At initial form capture, the account owner's pasted form showed **1 of 2 Project slots used**, resetting Monday at 00:00 UTC. The subsequent submission may have consumed another slot; check the current account rather than assuming one remains.
 
 Full-guideline link supplied by the form: https://portal.genlayer.foundation/contribution-type/41. An unauthenticated fetch redirected to the Portal home, so this packet asserts only the field rules visible in the account owner's supplied form, not unseen guideline text.
 
@@ -109,6 +109,50 @@ Add the repository as the required evidence item and allow the Portal to auto-de
 | GitHub File       | Real wallet/contract adapter and transaction lifecycle implementation; not a live execution proof. | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/src/client/genlayer-client.ts    |
 | GitHub File       | Direct Mode tests; local validation only.                                                          | https://github.com/timmyspurs12/WeatherPact/blob/cde3ec2e2637accaf8db1656237721820ef1b564/tests/direct/test_weatherpact.py |
 
+## Reviewer-required public-network sequence
+
+This is a future evidence plan, not a claim that any step has run. Do not begin signing or deployment until the read-only guard passes and the account owner explicitly authorizes the signer, funds, and fee path.
+
+1. **Qualify the exact source and network.** Configure the actual qualified node URL as `GENLAYER_NODE_RPC_URL` in the ignored `.env`, keep the independent Bradbury chain RPC configured, and run `npm run verify:network`. Record the repository commit and `sha256sum contracts/weatherpact.py`. Stop on any identity, manager, code, schema, or `gen_call` failure.
+
+2. **Deploy the exact reviewed contract.** After explicit authorization, use the existing guarded deployment wrapper and pinned release family. Record the returned GenLayer transaction ID immediately. Resume tracking that same transaction after uncertainty; never blindly deploy twice. Wait for the intended finality point and verify execution with the SDK success check. Record the actual contract address only after successful execution.
+
+3. **Verify the deployment before writes.** Configure that actual address and run `npm run verify:network -- --require-contract`. Preserve deployed code/schema evidence, the `get_metadata` read, transaction ID, contract address, and supported explorer links. Accepted or finalized status alone is not successful execution.
+
+4. **Record a reproducible historical pact and baseline.** Choose a place, local target date more than seven days in the past, metric, operator, threshold, and YES/NO prediction. Record every input and the creator's public address; never supply an observed value or provider response as authoritative input. Read and save `get_reputation(creator)` and `get_metadata` before the writes.
+
+5. **Create the pact from the actual sender.** Record the creation transaction ID, wait for finalization, and verify successful execution. Identify the unambiguous pact ID and read it with `get_pact` at latest-final. Verify the creator, all inputs, fixed Open-Meteo request, `readyAt`, and initial status. Save the creation activity and before/after metadata counts.
+
+6. **Resolve through the contract.** Once chain time is at or after `readyAt`, call `resolve_pact` with only the pact ID. Record the resolution transaction ID, wait for finalization, and verify successful execution. Read `get_pact` again and verify the actual `RESOLVED_YES` or `RESOLVED_NO` status, observed value and unit, source URL, resolution timestamp/resolver, provider coordinates, and threshold comparison. Do not predeclare the observed value or outcome.
+
+7. **Verify method-specific state effects.** Read `get_reputation(creator)` and `get_activity` at latest-final. Confirm that `finalizedPacts` increased exactly once from the baseline and that `correctPredictions` and `currentStreak` changed consistently with the creator's recorded prediction and actual outcome. Confirm that the same pact has matching creation and resolution activity. Do not infer success from the transaction status alone.
+
+8. **Publish the evidence package.** Include the repository commit, contract source digest, exact inputs, public creator address, deployment/creation/resolution transaction IDs, supported explorer links, final `get_pact`, `get_reputation`, `get_activity`, and `get_metadata` responses, plus the commands needed to reproduce the reads. Add these facts to the Portal only after they exist.
+
+## Documented self-hosted alternative
+
+The official [network documentation](https://docs.genlayer.com/developers/networks) permits either a Phase 2 node RPC published in the release announcement or **your own qualified node**. It explicitly distinguishes the GenLayer node RPC from the Conduit chain RPC.
+
+The documented [validator setup guide](https://docs.genlayer.com/validators/setup-guide) is the self-hosted route. Its published requirements are 64-bit Linux, AMD64, 16 GB RAM, 8 cores, 128 GB SSD/NVMe, 100 Mbps network, Docker, and Python 3.10+. A compatible deployment must use the current sealed protocol artifacts and preserve chain ID `4221`, genesis `0x17d89764d4f4f963158fc4c5e8f2cb670c2837740b35f37081c12860c3df97e4`, and AddressManager `0x3F71AE080BD6270A91dBcc7960d88797828538E0`.
+
+Configure chain infrastructure as documented. In particular, a Conduit WebSocket key belongs only in `GENLAYERNODE_ROLLUP_GENLAYERCHAINRPCKEY` in the node environment, never in a URL, `config.yaml`, browser bundle, or Git. The official node configuration exposes GenLayer node RPC on port `9151`; any remote verification or browser use needs an appropriately secured HTTPS/CORS path without credentialed public URLs.
+
+This workspace does not provide that external node host or Docker-based public infrastructure. Once a self-hosted or officially assigned node is available, the next safe command remains the unchanged read-only guard:
+
+```bash
+npm run verify:network
+```
+
+## Optional reviewer recommendations not yet implemented
+
+The reviewer also recommended the following improvements. They are not claimed complete:
+
+- Publish the existing tests through dedicated main-branch CI.
+- Add a canonical evidence digest to resolved records.
+- Strengthen frontend verification of method-specific state changes.
+
+These changes require their own implementation and local validation before a future deployment uses a different source digest.
+
 ## Quality-bar warning and missing evidence
 
 The following must remain explicit in any reviewer discussion:
@@ -119,15 +163,15 @@ The following must remain explicit in any reviewer discussion:
 - The public website does not currently demonstrate the form's genuine contract-call quality-bar item. Its real adapter is source evidence, not live proof.
 - Historical weather evidence may be model-derived or reanalysis-based. Validator agreement on one Open-Meteo response is not independent multi-provider verification.
 
-After an official endpoint becomes available, configure only its public URL and run `npm run verify:network`. Do not sign or deploy unless the unchanged guard passes. Update this packet with the actual deployment and verification evidence only after those facts exist.
+After an officially assigned or self-hosted qualified endpoint becomes available, configure only its public URL and run `npm run verify:network`. Do not sign or deploy unless the unchanged guard passes. Update this packet with the actual deployment and verification evidence only after those facts exist.
 
 ## Review and later evidence
 
-Use the Project form's rules, not the older general contribution workflow:
+Use the Project form's rules, not the older general contribution workflow. The pasted reviewer text does not identify the Portal status label, so apply the matching rule shown in the account:
 
-- **More information:** update the existing submission; no additional slot.
+- **More information:** update the existing submission after the required evidence exists; no additional slot.
 - **Rejection:** fixes or new evidence require a new submission and another weekly slot.
-- **Appeal:** challenges the original decision with the work as submitted; no additional slot.
+- **Appeal:** challenges the original decision with the work as submitted; it cannot introduce the new deployment evidence and uses no additional slot.
 - **Milestone:** only after a project has been accepted for Project Explorer; cosmetic changes do not qualify.
 
-No wallet connection, authentication, signature, Portal submission, deployment, or production change was performed while preparing this packet.
+No wallet connection, authentication, signature, Portal submission, deployment, or production change was performed by the agent while preparing or updating this packet.
