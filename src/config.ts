@@ -2,6 +2,7 @@ const env = import.meta.env;
 
 export const config = {
   contractAddress: env.VITE_WEATHERPACT_CONTRACT_ADDRESS?.trim() || null,
+  network: env.VITE_GENLAYER_NETWORK?.trim() || 'bradbury',
   chainId: env.VITE_GENLAYER_CHAIN_ID?.trim() || null,
   chainName: env.VITE_GENLAYER_CHAIN_NAME?.trim() || 'Network not configured',
   rpcUrl: env.VITE_GENLAYER_RPC_URL?.trim() || null,

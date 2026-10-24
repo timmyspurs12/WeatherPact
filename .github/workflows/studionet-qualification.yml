@@ -1,0 +1,133 @@
+name: Studionet qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      contract_address:
+        description: Optional deployed WeatherPact address for post-deployment verification
+        required: false
+        type: string
+  push:
+    paths:
+      - '.github/workflows/studionet-qualification.yml'
+      - 'contracts/weatherpact.py'
+      - 'requirements.txt'
+      - 'tests/direct/**'
+      - 'tests/client/**'
+      - 'tests/network/**'
+      - 'scripts/verify-network.mjs'
+      - 'scripts/deploy.mjs'
+      - 'scripts/finalize-deployment.mjs'
+      - 'scripts/verify-deployment-account.mjs'
+      - 'scripts/lib/**'
+      - 'src/client/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studionet-qualification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    name: Stable contract compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GENVMROOT: ${{ github.workspace }}/.stable-genvm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize the stable GenVM SDK, not latest or an RC
+        uses: actions/checkout@v4
+        with:
+          repository: genlayerlabs/genvm
+          ref: v0.2.16
+          path: .stable-genvm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install the pinned stable Python family
+        run: python -m pip install -r requirements.txt
+      - name: Run stable lint and semantic schema validation
+        run: |
+          genvm-lint check contracts/weatherpact.py
+          echo '::notice::Stable GenVM v0.2.16 lint and semantic schema validation passed.'
+      - name: Run all Direct Mode behavior tests on GenVM v0.2.16
+        run: |
+          set +e
+          output=$(python -m pytest tests/direct -q 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            echo '::error::Stable Direct Mode tests failed; see the job log.'
+            exit "$status"
+          fi
+          summary=$(printf '%s\n' "$output" | tail -1)
+          echo "::notice::Stable GenVM v0.2.16 Direct Mode: ${summary}"
+
+  verify:
+    name: Stable frontend and hosted Studionet guard
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run client and network fixtures
+        run: |
+          log="$RUNNER_TEMP/weatherpact-fixtures.log"
+          set +e
+          { npm run test:client && npm run test:network; } 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            FIXTURE_LOG="$log" node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          const lines = readFileSync(process.env.FIXTURE_LOG, 'utf8').split('\n');
+          const failures = lines.flatMap((line, index) => (line.startsWith('not ok ') ? [index] : []));
+          const selected = failures.length
+            ? failures.slice(0, 4).flatMap((index) => lines.slice(index, index + 22))
+            : lines.slice(-30);
+          for (const line of selected) {
+            console.log(`::error::${line.replaceAll('%', '%25').replaceAll('\r', '%0D')}`);
+          }
+          JS
+            exit "$status"
+          fi
+      - name: Run the strict production build
+        run: npm run build
+      - name: Inspect the pinned stable CLI and built-in Studionet profile
+        run: |
+          ./node_modules/.bin/genlayer --version
+          ./node_modules/.bin/genlayer network set studionet
+          ./node_modules/.bin/genlayer network info
+      - name: Run the read-only Studionet network and contract guard
+        env:
+          GENLAYER_NETWORK: studionet
+          GENLAYER_NODE_RPC_URL: https://studio.genlayer.com/api
+          WEATHERPACT_CONTRACT_ADDRESS: ${{ inputs.contract_address }}
+        run: |
+          args=()
+          if [ -n "$WEATHERPACT_CONTRACT_ADDRESS" ]; then
+            args+=(--require-contract)
+          fi
+          set +e
+          output=$(npm run verify:network -- "${args[@]}" 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            echo '::error::Studionet guard failed; see the job log.'
+            exit "$status"
+          fi
+          summary=$(printf '%s\n' "$output" | tail -1)
+          echo "::notice::${summary}"

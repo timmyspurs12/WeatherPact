@@ -6,17 +6,18 @@ WeatherPact is a responsive React + TypeScript DApp for public, measurable weath
 
 The contract fetches Open-Meteo Historical Weather API evidence inside GenLayer's non-deterministic equivalence flow. Validators independently fetch and normalize the observation; no LLM can override the numerical comparison. There is no conventional API server, off-chain outcome database, payment, stake, payout, insurance, or token mechanism.
 
-## Status: implemented locally, not deployed here
+## Status: stable Studionet source qualified; not deployed
 
-| Area                               | Current state                                                                                    |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Intelligent Contract               | Implemented in `contracts/weatherpact.py`; local Direct Mode, lint, schema, and type checks pass |
-| Real frontend adapter              | Implemented with `genlayer-js@2.0.0-rc.2`; strict TypeScript and production build pass           |
-| Local guard tests                  | 5 transaction-journal tests and 7 network-verification tests pass                                |
-| Live Bradbury qualification        | **Not completed**: this environment has no qualified GenLayer node RPC endpoint                  |
-| Contract deployment                | **Not performed**; no deployment address or transaction is claimed                               |
-| On-chain writes/weather resolution | **Not performed**; no measured WeatherPact fee profile or live consensus result is claimed       |
-| Default UI                         | Conspicuously labelled preview mode with genuine writes disabled                                 |
+| Area                               | Current state                                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Intelligent Contract               | Stable GenVM `v0.2.16` lint/schema validation and 38/38 Direct Mode tests pass in hosted CI                 |
+| Real frontend adapter              | Ported to stable `genlayer-js@1.1.8`; strict TypeScript and production build pass                           |
+| Local guard tests                  | 5 transaction-journal tests and 15 network/deployment-safety tests pass against the stable SDK              |
+| Live Studionet qualification       | **Read-only source-schema guard passed** in Actions run `40118011162`; deployed-contract checks are pending |
+| Previous Bradbury target           | Paused by the missing qualified node RPC and faucet eligibility; not substituted silently                   |
+| Contract deployment                | **Not performed**; no deployment address or transaction is claimed                                          |
+| On-chain writes/weather resolution | **Not performed**; no measured stable fee profile or live consensus result is claimed                       |
+| Default UI                         | Conspicuously labelled preview mode with genuine writes disabled                                            |
 
 A configured contract and qualified node are required before the UI labels any record as on-chain. Environment variables alone never turn preview records into chain records.
 
@@ -46,7 +47,7 @@ The production build currently emits Vite's non-fatal large-chunk warning becaus
 ```text
 Injected wallet ──signs writes──┐
                                 ▼
-React static SPA ──genlayer-js──► Qualified GenLayer node RPC ──► Bradbury chain
+React static SPA ──genlayer-js──► Qualified GenLayer RPC ──► Explicit Studionet or Bradbury profile
        │                              │                              │
        │                              └──── read/finality/status ◄───┘
        ▼
@@ -55,7 +56,7 @@ WeatherPact Intelligent Contract ──fixed HTTPS request──► Open-Meteo a
 
 - `contracts/weatherpact.py` is the only authoritative record/outcome store.
 - `src/client/genlayer-client.ts` implements the same `WeatherPactClient` interface as the isolated preview adapter.
-- `src/client/index.ts` selects the real adapter only for a complete, valid Bradbury configuration; otherwise it selects preview mode.
+- `src/client/index.ts` selects the real adapter only for a complete, valid, explicitly selected Studionet or Bradbury configuration; otherwise it selects preview mode.
 - `src/client/network.ts` stops reads/writes on network identity, contract code/schema, metadata, or `gen_call` qualification failures.
 - `src/client/transaction-journal.ts` stores only non-secret write intent and transaction IDs so an interrupted wait resumes the same transaction.
 - `scripts/verify-network.mjs` performs read-only deployment/runtime qualification.
@@ -112,95 +113,118 @@ python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 
+# genvm-linter 0.7.1 otherwise asks for latest GenVM. Give it the exact
+# stable SDK tree used by Studio v0.121.6; do not substitute current main.
+git clone --depth 1 --branch v0.2.16 \
+  https://github.com/genlayerlabs/genvm.git /tmp/weatherpact-genvm-v0.2.16
+export GENVMROOT=/tmp/weatherpact-genvm-v0.2.16
+
+genvm-lint check contracts/weatherpact.py
 pytest tests/direct -q
-genvm-lint lint contracts/weatherpact.py
-GENVM_SOURCE_MODE=release GENVM_VERSION=v0.6.0-rc10 \
-  genvm-lint validate contracts/weatherpact.py
-GENVM_SOURCE_MODE=release GENVM_VERSION=v0.6.0-rc10 \
-  genvm-lint typecheck contracts/weatherpact.py
 ```
 
-The requirements select the Phase 2/consensus-v0.6-compatible family and pin the inspected linter source commit. The current linter understands the runner's current schema API; older PyPI `genvm-linter 0.11.0` does not. If using an already-built GenVM tree instead of release acquisition, configure the official `GENVM_PREBUILT_DIR` supported by the installed tools. Do not substitute a host Python 3.11 shim or an unrelated runner.
+The requirements select the stable Studio `v0.121.6` testing family: `genlayer-py==0.9.0`, `genlayer-test==0.24.0`, and `genvm-linter==0.7.1`. The testing-suite pin requires that exact `genlayer-py` version; do not upgrade either package independently. The contract declares the stable `py-genlayer` runner dependency, and every Direct Mode deployment explicitly selects GenVM `v0.2.16`. Do not substitute a host Python 3.11 shim, StudioDev, current RC `main`, or the former Phase 2 runner.
 
-Latest local results:
+Current migration results:
 
-- **38/38 Direct Mode tests passed**, including actual sender, validation, early resolution, all metrics/operators, matching and non-matching outcomes, missing/malformed/failed sources, retries, coordinate mismatch, duplicate resolution, validators, bounded views, and multiple pacts.
-- **3/3 fast GenVM lint checks passed**.
-- **Schema validation passed: WeatherPact, 7 methods (5 view, 2 write)**.
-- **Pyright: no type errors**.
-- **5/5 journal tests and 7/7 network guard tests passed**.
-- **Strict TypeScript and Vite production build passed**.
+- **5/5 journal tests and 15/15 network/deployment-safety tests passed** with stable `genlayer-js@1.1.8`.
+- **Strict TypeScript and Vite production build passed** after removing RC-only fee/finality APIs.
+- **Hosted stable qualification passed** in [Actions run 40118011162](https://github.com/timmyspurs12/WeatherPact/actions/runs/40118011162): GenVM `v0.2.16` lint and semantic schema validation, **38/38 Direct Mode tests**, stable frontend checks, and the read-only Studionet source-schema guard with all seven required methods.
 
-These are local tests, not a live deployment or production-runner deployment proof. Docker-based Studio/localnet integration was not run because Docker is unavailable in this environment.
+These are source/local tests, not a live deployment or production-runner deployment proof. Docker-based Studio/localnet integration was not run because Docker is unavailable in this environment.
 
 ## Public environment configuration
 
-Copy the public example and fill it only when a real deployment and qualified public node exist:
+Copy the public example. Its active profile is the user-authorized **Studionet** pivot; the contract address remains empty until a real deployment succeeds:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable                            | Purpose                                                             |
-| ----------------------------------- | ------------------------------------------------------------------- |
-| `VITE_WEATHERPACT_CONTRACT_ADDRESS` | Actual deployed Intelligent Contract address; empty means preview   |
-| `VITE_GENLAYER_CHAIN_ID`            | Must be `4221` for the real adapter                                 |
-| `VITE_GENLAYER_CHAIN_NAME`          | Public network label                                                |
-| `VITE_GENLAYER_RPC_URL`             | **Qualified GenLayer node RPC** supporting `gen_*` and browser CORS |
-| `VITE_GENLAYER_CHAIN_RPC_URL`       | Public chain RPC used for injected-wallet network configuration     |
-| `VITE_GENLAYER_EXPLORER_URL`        | Optional public explorer base URL                                   |
+| Variable                            | Purpose                                                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `VITE_WEATHERPACT_CONTRACT_ADDRESS` | Actual deployed Intelligent Contract address; empty means preview             |
+| `VITE_GENLAYER_NETWORK`             | Exactly `studionet` or `bradbury`; selects the strict identity profile        |
+| `VITE_GENLAYER_CHAIN_ID`            | Must match the selected profile: `61999` or `4221`                            |
+| `VITE_GENLAYER_CHAIN_NAME`          | Accurate public network label                                                 |
+| `VITE_GENLAYER_RPC_URL`             | Qualified GenLayer RPC supporting the required `gen_*` methods and CORS       |
+| `VITE_GENLAYER_CHAIN_RPC_URL`       | Wallet chain RPC; identical to the single Studionet RPC, separate on Bradbury |
+| `VITE_GENLAYER_EXPLORER_URL`        | Public explorer base URL for the selected network                             |
 
-`https://rpc.testnet-chain.genlayer.com` is the chain RPC, not a substitute for the GenLayer node RPC: the chain-only endpoint does not provide the required `gen_call`/contract methods. The browser node URL must be HTTPS and contain no credentials, query string, or fragment.
+Studionet uses the official `https://studio.genlayer.com/api` endpoint for GenLayer and wallet operations. Do not configure Bradbury's chain RPC for it. Studionet is hosted development infrastructure and its state may reset; all resulting evidence must be labelled Studionet.
+
+For Bradbury, `https://rpc.testnet-chain.genlayer.com` remains only the chain RPC, not a substitute for the missing qualified Phase 2 GenLayer node RPC. The browser RPC must be HTTPS and contain no credentials, query string, or fragment.
 
 Every `VITE_*` value is embedded in the public browser bundle. Never place private keys, seed phrases, signer secrets, privileged credentials, or credentialed RPC URLs in them. All `.env` and `.env.*` files except `.env.example` are ignored. Browser users sign with their own injected wallet.
 
-The deployment scripts also accept the non-Vite aliases `GENLAYER_NODE_RPC_URL`, `GENLAYER_CHAIN_RPC_URL`, and `WEATHERPACT_CONTRACT_ADDRESS`; they fall back to the corresponding public variables above.
+The deployment scripts also accept the non-Vite aliases `GENLAYER_NETWORK`, `GENLAYER_NODE_RPC_URL`, `GENLAYER_CHAIN_RPC_URL`, and `WEATHERPACT_CONTRACT_ADDRESS`; they fall back to the corresponding public variables above.
 
-## Bradbury verification and deployment
+## Network verification and deployment
 
-Target identity is hard-coded and checked before deployment and before frontend reads/writes:
+The official [network](https://docs.genlayer.com/developers/networks) and [CLI configuration](https://docs.genlayer.com/developers/intelligent-contracts/deploying/network-configuration) documentation provides both built-in profiles. The pinned CLI and SDK agree on the Studionet chain ID, RPC, and consensus address.
+
+### Strict Studionet profile
+
+- chain ID: **`61999`**;
+- GenLayer RPC: **`https://studio.genlayer.com/api`**;
+- pinned consensus deployment: **`0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575`**;
+- one official RPC, with no separate chain RPC or Bradbury AddressManager assumption.
+
+The Studionet guard checks the exact chain ID, requires the pinned SDK/CLI consensus configuration, and validates the actual contract source schema through Studio's GenLayer RPC. It does not assume that Studio exposes EVM bytecode at the static consensus address. Chain ID alone is insufficient. After deployment the guard also checks deployed code/schema and an actual latest-final `get_metadata` read through `gen_call`.
+
+### Preserved Bradbury Phase 2 profile
 
 - chain ID: **`4221`**;
 - genesis: **`0x17d89764d4f4f963158fc4c5e8f2cb670c2837740b35f37081c12860c3df97e4`**;
 - AddressManager: **`0x3F71AE080BD6270A91dBcc7960d88797828538E0`**.
 
-The verifier checks both the node and chain RPC, deployed AddressManager code, the consensus contract's AddressManager pointer, source code/schema through `gen_*`, and—when a contract address is supplied—the deployed code/schema and an actual `get_metadata` read through `gen_call`.
+The Bradbury guard retains its independent node/chain RPC, genesis, AddressManager code/pointer, source schema, and post-deployment `gen_call` checks. Selecting Studionet does not weaken or relabel those rules.
 
-1. Obtain a qualified Phase 2 GenLayer node RPC from the official release/network instructions or operate a compatible node. Configure its public URL in `.env`; leave the contract address empty before deployment.
+### Guarded sequence
+
+1. Select the intended profile in `.env` and leave the contract address empty before deployment. The active example selects `studionet`.
 2. Configure a signer using the official CLI's encrypted account flow, or choose browser signing. Keep all signing material outside Vite and outside Git.
 
    ```bash
    npx --no-install genlayer account create
    ```
 
-3. Run the read-only guard. It makes no write and needs no funds.
+3. Run the read-only guard. It makes no write and needs no funds. `.github/workflows/studionet-qualification.yml` can run the same Studionet check from GitHub Actions without a signer.
 
    ```bash
    npm run verify:network
    ```
 
-4. Only after it passes, deploy with the pinned CLI. Use `--wallet browser` for browser signing, or omit it to use the CLI's configured encrypted account. Any approved fee-profile/CLI options can be appended; `--rpc` and `--contract` overrides are deliberately rejected by the guard.
+4. Only after it passes and the selected account has the required test GEN, deploy with the pinned CLI and configured encrypted account. The wrapper selects the matching built-in CLI alias after qualification, rejects RPC/contract/manual-fee/password overrides, and records the returned transaction ID in an ignored or external journal immediately. Browser users sign subsequent pact writes with their own connected wallet; no browser signer is embedded in this deployment flow.
 
    ```bash
-   npm run deploy:contract -- --wallet browser
+   npm run deploy:contract
    ```
 
-   The browser adapter estimates each exact write with `estimateTransactionFeesForWrite` and submits the SDK-returned fee options at current network prices. No measured WeatherPact fee-profile file is included or invented. Generate and validate a representative profile with the official Phase 2 fee tooling before relying on a static profile; live fee estimation and live writes remain unexecuted here.
+   The stable browser adapter uses `genlayer-js@1.1.8` `writeContract` with `value: 0n` and the documented network/wallet fee path. RC-only `estimateTransactionFeesForWrite` and fee overrides are not available in that release and are not emulated. No live fee measurement or write has occurred here.
 
-5. Set `VITE_WEATHERPACT_CONTRACT_ADDRESS` to the actual address returned by a successful deployment, then verify that exact deployment and build:
+5. Record the returned GenLayer transaction ID immediately and resume that same transaction after uncertainty. Track it with `waitForTransactionReceipt({ status: FINALIZED })`, then require `txExecutionResultName === FINISHED_WITH_RETURN`; a decided/accepted receipt alone is not final deployment evidence. The read-only helper below cannot submit another deployment. Only after it prints the actual address should that address be recorded.
+
+   ```bash
+   npm run finalize:deployment -- <deployment-transaction-id>
+   ```
+
+6. Set `VITE_WEATHERPACT_CONTRACT_ADDRESS` to that verified address, then verify the exact deployment and build:
 
    ```bash
    npm run verify:network -- --require-contract
    npm run build
    ```
 
-Any identity mismatch, missing method, malformed response, unreachable endpoint, missing credentials/funds, or signing failure stops the flow. Do not bypass the guard. In this workspace the precise remaining blocker is the absence of a qualified GenLayer node RPC; therefore no deployment or on-chain write was attempted.
+For GitHub-hosted execution, `.github/workflows/studionet-deployment.yml` is manual-dispatch only. It requires the approved full commit SHA and contract SHA-256, rechecks the public account address and positive balance, records the transaction immediately, resumes that same ID through stable finality/execution checks, and then verifies deployed code/schema/`gen_call`. A new submission uses the repository secrets `WEATHERPACT_STUDIONET_KEYSTORE` and `WEATHERPACT_STUDIONET_KEYSTORE_PASSWORD`; entering `deployment_tx` instead resumes read-only without either secret. Public evidence artifacts exclude key material. The workflow has not been run.
+
+Any identity mismatch, missing method, malformed response, unreachable endpoint, missing credentials/funds, or signing failure stops the flow. Do not bypass the guard. The existing CLI wallet has test GEN on Studionet and read-only stable source qualification has passed; no deployment, deployed-contract qualification, or on-chain write has been attempted.
 
 ## Transaction safety and UI behavior
 
-- Injected-wallet writes require the connected account and chain `4221`; wallet switching can request the documented chain configuration.
+- Injected-wallet writes require the connected account and selected profile chain (`61999` for Studionet or `4221` for Bradbury); wallet switching requests that exact chain configuration.
 - A GenLayer consensus transaction ID—not merely an EVM envelope hash—is persisted as soon as the SDK returns it.
-- Tracking uses `waitForFinalization`, followed by the SDK `isSuccessful` check. Accepted/finalized alone is not presented as successful execution.
+- Tracking uses stable `waitForTransactionReceipt({ status: FINALIZED })`, followed by an explicit `FINISHED_WITH_RETURN` execution check. Accepted/finalized alone is not presented as successful execution.
 - A tracking interruption keeps the UI in a resumable state and offers **Resume same transaction**. It does not blindly submit another write.
 - Durable reads use `TransactionHashVariant.LATEST_FINAL`. Real records receive no invented transaction hashes; creation/resolution hashes are shown only when present in this browser's journal.
 - A newly created pact ID is linked only when one unambiguous matching finalized record is found. Otherwise the successful transaction remains visible without guessing a record.
@@ -219,7 +243,7 @@ No backend is required. A production deployment must permit browser access to th
 
 ```text
 contracts/weatherpact.py          Authoritative Python Intelligent Contract
-scripts/verify-network.mjs       Read-only Bradbury + GenVM qualification
+scripts/verify-network.mjs       Read-only Studionet/Bradbury + GenVM qualification
 scripts/deploy.mjs               Guarded pinned-CLI deployment
 src/client/                      Real/preview adapters, network guard, tx journal
 src/components/                  Accessible shell, evidence, forms, UI primitives
