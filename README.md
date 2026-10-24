@@ -6,18 +6,18 @@ WeatherPact is a responsive React + TypeScript DApp for public, measurable weath
 
 The contract fetches Open-Meteo Historical Weather API evidence inside GenLayer's non-deterministic equivalence flow. Validators independently fetch and normalize the observation; no LLM can override the numerical comparison. There is no conventional API server, off-chain outcome database, payment, stake, payout, insurance, or token mechanism.
 
-## Status: stable migration implemented locally, hosted qualification pending
+## Status: stable Studionet source qualified; not deployed
 
-| Area                               | Current state                                                                                             |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Intelligent Contract               | Ported to stable GenVM `v0.2.16` / Studio `v0.121.6` APIs; stable hosted lint and Direct Mode are pending |
-| Real frontend adapter              | Ported to stable `genlayer-js@1.1.8`; strict TypeScript and production build pass                         |
-| Local guard tests                  | 5 transaction-journal tests and 12 network-verification tests pass against the stable SDK                 |
-| Live Studionet qualification       | **Pending for the migrated source**; the earlier Phase 2 RC source was rejected with `invalid_contract`   |
-| Previous Bradbury target           | Paused by the missing qualified node RPC and faucet eligibility; not substituted silently                 |
-| Contract deployment                | **Not performed**; no deployment address or transaction is claimed                                        |
-| On-chain writes/weather resolution | **Not performed**; no measured stable fee profile or live consensus result is claimed                     |
-| Default UI                         | Conspicuously labelled preview mode with genuine writes disabled                                          |
+| Area                               | Current state                                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Intelligent Contract               | Stable GenVM `v0.2.16` lint/schema validation and 38/38 Direct Mode tests pass in hosted CI                 |
+| Real frontend adapter              | Ported to stable `genlayer-js@1.1.8`; strict TypeScript and production build pass                           |
+| Local guard tests                  | 5 transaction-journal tests and 12 network-verification tests pass against the stable SDK                   |
+| Live Studionet qualification       | **Read-only source-schema guard passed** in Actions run `40117702127`; deployed-contract checks are pending |
+| Previous Bradbury target           | Paused by the missing qualified node RPC and faucet eligibility; not substituted silently                   |
+| Contract deployment                | **Not performed**; no deployment address or transaction is claimed                                          |
+| On-chain writes/weather resolution | **Not performed**; no measured stable fee profile or live consensus result is claimed                       |
+| Default UI                         | Conspicuously labelled preview mode with genuine writes disabled                                            |
 
 A configured contract and qualified node are required before the UI labels any record as on-chain. Environment variables alone never turn preview records into chain records.
 
@@ -129,7 +129,7 @@ Current migration results:
 
 - **5/5 journal tests and 12/12 network guard tests passed** with stable `genlayer-js@1.1.8`.
 - **Strict TypeScript and Vite production build passed** after removing RC-only fee/finality APIs.
-- **Stable lint, schema validation, and Direct Mode are pending hosted Python 3.12 execution.** The historical 38/38 passes were against the former Phase 2 RC source and are not presented as stable-Studionet evidence.
+- **Hosted stable qualification passed** in [Actions run 40117702127](https://github.com/timmyspurs12/WeatherPact/actions/runs/40117702127): GenVM `v0.2.16` lint and semantic schema validation, **38/38 Direct Mode tests**, stable frontend checks, and the read-only Studionet source-schema guard with all seven required methods.
 
 These are source/local tests, not a live deployment or production-runner deployment proof. Docker-based Studio/localnet integration was not run because Docker is unavailable in this environment.
 
@@ -216,7 +216,7 @@ The Bradbury guard retains its independent node/chain RPC, genesis, AddressManag
    npm run build
    ```
 
-Any identity mismatch, missing method, malformed response, unreachable endpoint, missing credentials/funds, or signing failure stops the flow. Do not bypass the guard. The existing CLI wallet has test GEN on Studionet, but hosted qualification of the migrated source has not completed; no deployment or on-chain write has been attempted.
+Any identity mismatch, missing method, malformed response, unreachable endpoint, missing credentials/funds, or signing failure stops the flow. Do not bypass the guard. The existing CLI wallet has test GEN on Studionet and read-only stable source qualification has passed; no deployment, deployed-contract qualification, or on-chain write has been attempted.
 
 ## Transaction safety and UI behavior
 

@@ -10,7 +10,7 @@ The review says “supported public GenLayer network,” not Bradbury specifical
 
 The active target is stable hosted **Studionet**, chain ID `61999`, using its official `https://studio.genlayer.com/api` RPC. A separate strict profile preserves Bradbury's checks rather than weakening them. Studionet state may reset, reviewer acceptance of this substitute has not been guaranteed, and every resulting record must be labelled Studionet.
 
-After stable Studio rejected the Phase 2 RC source with `invalid_contract`, the account owner explicitly authorized a stable-Studionet port. The working source now declares GenVM `v0.2.16` and the stable Studio `v0.121.6` runner dependency, with `genlayer-py==0.9.0`, `genlayer-test==0.24.0`, `genvm-linter==0.7.1`, `genlayer-js==1.1.8`, and CLI `0.39.2`. Stable JavaScript fixtures and the strict build pass locally; stable Python lint/Direct Mode and hosted source-schema qualification remain pending. No successful hosted qualification of the migrated source, deployment, or runtime result is claimed in this revision.
+After stable Studio rejected the Phase 2 RC source with `invalid_contract`, the account owner explicitly authorized a stable-Studionet port. The source now declares GenVM `v0.2.16` and the stable Studio `v0.121.6` runner dependency, with `genlayer-py==0.9.0`, `genlayer-test==0.24.0`, `genvm-linter==0.7.1`, `genlayer-js==1.1.8`, and CLI `0.39.2`. [Actions run 40117702127](https://github.com/timmyspurs12/WeatherPact/actions/runs/40117702127) passed stable lint/schema validation, 38/38 Direct Mode tests, frontend fixtures/build, and the read-only hosted Studionet source-schema guard. This is source/network compatibility evidence only; no deployment, deployed-contract qualification, or runtime result is claimed in this revision.
 
 The application fields below are preserved as the truthful pre-deployment record. Do not resubmit them as runtime evidence or claim that the live contract-call quality bar has been demonstrated.
 
@@ -151,7 +151,7 @@ npm run verify:network
 
 The reviewer also recommended the following improvements. They are not claimed complete:
 
-- Publish the existing tests through dedicated main-branch CI.
+- Promote the new stable qualification workflow into required main-branch CI; it currently runs on the working branch.
 - Add a canonical evidence digest to resolved records.
 - Strengthen frontend verification of method-specific state changes.
 
@@ -167,7 +167,7 @@ The following must remain explicit in any reviewer discussion:
 - The public website does not currently demonstrate the form's genuine contract-call quality-bar item. Its real adapter is source evidence, not live proof.
 - Historical weather evidence may be model-derived or reanalysis-based. Validator agreement on one Open-Meteo response is not independent multi-provider verification.
 
-After an officially assigned or self-hosted qualified endpoint becomes available, configure only its public URL and run `npm run verify:network`. Do not sign or deploy unless the unchanged guard passes. Update this packet with the actual deployment and verification evidence only after those facts exist.
+The active Studionet source guard has passed, but sandbox RPC egress prevents deployment from this environment. Deployment requires user-local execution or an explicitly approved, secured GitHub Actions signer path; no wallet secret has been uploaded. Update this packet with actual deployment and verification evidence only after those facts exist.
 
 ## Review and later evidence
 
