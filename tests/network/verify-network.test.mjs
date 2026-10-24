@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { after, before, beforeEach, test } from 'node:test';
 import { encodeFunctionResult, parseAbi } from 'viem';
-import { BRADBURY, verifyNetwork } from '../../scripts/verify-network.mjs';
+import { BRADBURY, STUDIONET, verifyNetwork } from '../../scripts/verify-network.mjs';
 
 const abi = parseAbi(['function getAddressManager() view returns (address)']);
 const methods = Object.fromEntries(
@@ -61,6 +61,7 @@ before(async () => {
           });
           break;
         case 'gen_getContractSchema':
+        case 'gen_getContractSchemaForCode':
           if (state.schemaError) error = { code: -32601, message: 'method not found' };
           else result = state.schema;
           break;
@@ -109,6 +110,15 @@ function verify(overrides = {}) {
   });
 }
 
+function verifyStudio(overrides = {}) {
+  return verifyNetwork({
+    network: 'studionet',
+    nodeRpcUrl: `${base}/node`,
+    contractAddress: null,
+    ...overrides,
+  });
+}
+
 test('qualifies Bradbury identity and the actual contract source schema', async () => {
   const result = await verify();
   assert.equal(result.chainId, 4221);
@@ -150,4 +160,33 @@ test('rejects a source schema without every required contract method', async () 
 test('requires actual gen_* support rather than accepting eth_* alone', async () => {
   state.schemaError = true;
   await assert.rejects(verify(), /gen_getContractSchema/);
+});
+
+test('qualifies Studionet with its own chain, consensus code, and source schema', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  const result = await verifyStudio();
+  assert.equal(result.network, 'studionet');
+  assert.equal(result.chainId, 61999);
+  assert.equal(result.cliAlias, 'studionet');
+  assert.equal(result.methods, 7);
+  assert.ok(state.calls.includes('node:eth_getCode'));
+  assert.ok(state.calls.includes('node:gen_getContractSchemaForCode'));
+  assert.equal(
+    state.calls.some((call) => call.startsWith('chain:')),
+    false,
+  );
+});
+
+test('stops Studionet on a chain mismatch before schema work', async () => {
+  state.nodeChain = BRADBURY.chainIdHex;
+  await assert.rejects(verifyStudio(), /expected Studionet chain 61999/);
+  assert.equal(state.calls.includes('node:gen_getContractSchema'), false);
+});
+
+test('rejects a separate chain RPC for the single-endpoint Studionet profile', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  await assert.rejects(
+    verifyStudio({ chainRpcUrl: `${base}/chain` }),
+    /Studionet uses one official GenLayer RPC/,
+  );
 });

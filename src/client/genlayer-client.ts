@@ -1,5 +1,4 @@
 import { createClient, isSuccessful } from 'genlayer-js';
-import { testnetBradbury } from 'genlayer-js/chains';
 import { TransactionHashVariant, type Hash } from 'genlayer-js/types';
 import { getAddress, type Address } from 'viem';
 import { SOURCE_DISCLOSURE } from '../config';
@@ -18,7 +17,7 @@ import type {
   WeatherPactClient,
   WriteResult,
 } from '../types/weatherpact';
-import { BRADBURY_CHAIN_ID, verifyBradburyNode } from './network';
+import { verifyNetworkProfile, type NetworkProfile } from './network';
 import { TransactionJournal, type JournalEntry } from './transaction-journal';
 
 const PAGE_SIZE = 50;
@@ -30,6 +29,7 @@ interface AdapterOptions {
   contractAddress: string;
   rpcUrl: string;
   chainName: string;
+  profile: NetworkProfile;
 }
 
 interface NormalizedCreate {
@@ -266,23 +266,26 @@ function trackingError(hash: string, reason: unknown): Error {
 }
 
 export class GenLayerWeatherPactClient implements WeatherPactClient {
-  readonly capabilities: ClientCapabilities = {
-    mode: 'genlayer',
-    canWrite: true,
-    canResolve: true,
-    canReadReputation: true,
-    label: 'GenLayer Bradbury · contract connected',
-  };
+  readonly capabilities: ClientCapabilities;
 
   private readonly contractAddress: Address;
   private readonly rpcUrl: string;
   private readonly chainName: string;
+  private readonly profile: NetworkProfile;
   private readonly client: ReturnType<typeof createClient>;
   private readonly journal: TransactionJournal;
   private qualification: Promise<void> | null = null;
 
   constructor(options: AdapterOptions) {
     this.contractAddress = getAddress(options.contractAddress);
+    this.profile = options.profile;
+    this.capabilities = {
+      mode: 'genlayer',
+      canWrite: true,
+      canResolve: true,
+      canReadReputation: true,
+      label: `${this.profile.label} · contract connected`,
+    };
     const endpoint = new URL(options.rpcUrl);
     if (
       endpoint.protocol !== 'https:' ||
@@ -297,14 +300,14 @@ export class GenLayerWeatherPactClient implements WeatherPactClient {
     }
     this.rpcUrl = endpoint.toString();
     this.chainName = options.chainName;
-    this.client = createClient({ chain: testnetBradbury, endpoint: this.rpcUrl });
-    this.journal = new TransactionJournal(String(BRADBURY_CHAIN_ID), this.contractAddress);
+    this.client = createClient({ chain: this.profile.sdkChain, endpoint: this.rpcUrl });
+    this.journal = new TransactionJournal(String(this.profile.chainId), this.contractAddress);
   }
 
   private async ensureQualified(): Promise<void> {
     if (!this.qualification) {
       const pending = (async () => {
-        await verifyBradburyNode(this.rpcUrl, this.contractAddress);
+        await verifyNetworkProfile(this.profile, this.rpcUrl, this.contractAddress);
         const metadata = asRecord(await this.read('get_metadata', []), 'WeatherPact metadata');
         if (
           metadata.name !== 'WeatherPact' ||
@@ -391,7 +394,7 @@ export class GenLayerWeatherPactClient implements WeatherPactClient {
       },
       onChain: {
         contractAddress: this.contractAddress,
-        chainId: String(BRADBURY_CHAIN_ID),
+        chainId: String(this.profile.chainId),
         chainName: this.chainName,
         creationTxHash: this.journal.hashFor(id, 'create'),
         resolutionTxHash: this.journal.hashFor(id, 'resolve'),
@@ -478,15 +481,17 @@ export class GenLayerWeatherPactClient implements WeatherPactClient {
       throw new Error('The wallet account changed before submission. No transaction was sent.');
     }
     const chain = await provider.request({ method: 'eth_chainId' });
-    if (typeof chain !== 'string' || Number.parseInt(chain, 16) !== BRADBURY_CHAIN_ID) {
-      throw new Error(`Switch the wallet to Bradbury chain ${BRADBURY_CHAIN_ID} before writing.`);
+    if (typeof chain !== 'string' || Number.parseInt(chain, 16) !== this.profile.chainId) {
+      throw new Error(
+        `Switch the wallet to ${this.profile.label} chain ${this.profile.chainId} before writing.`,
+      );
     }
     return address;
   }
 
   private writeClient(account: Address): ReturnType<typeof createClient> {
     return createClient({
-      chain: testnetBradbury,
+      chain: this.profile.sdkChain,
       endpoint: this.rpcUrl,
       account,
       provider: window.ethereum,

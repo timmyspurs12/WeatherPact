@@ -1,0 +1,54 @@
+name: Studionet qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      contract_address:
+        description: Optional deployed WeatherPact address for post-deployment verification
+        required: false
+        type: string
+  push:
+    paths:
+      - '.github/workflows/studionet-qualification.yml'
+      - 'contracts/weatherpact.py'
+      - 'scripts/verify-network.mjs'
+      - 'src/client/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studionet-qualification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run the local network fixtures
+        run: npm run test:network
+      - name: Inspect the pinned CLI and built-in Studionet profile
+        run: |
+          ./node_modules/.bin/genlayer --version
+          ./node_modules/.bin/genlayer network set studionet
+          ./node_modules/.bin/genlayer network info
+      - name: Run the read-only Studionet network and contract guard
+        env:
+          GENLAYER_NETWORK: studionet
+          GENLAYER_NODE_RPC_URL: https://studio.genlayer.com/api
+          WEATHERPACT_CONTRACT_ADDRESS: ${{ inputs.contract_address }}
+        run: |
+          args=()
+          if [ -n "$WEATHERPACT_CONTRACT_ADDRESS" ]; then
+            args+=(--require-contract)
+          fi
+          npm run verify:network -- "${args[@]}"

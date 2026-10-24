@@ -1,11 +1,35 @@
 import { decodeFunctionResult, encodeFunctionData, parseAbi } from 'viem';
-import { testnetBradbury } from 'genlayer-js/chains';
+import { studionet, testnetBradbury } from 'genlayer-js/chains';
 
 export const BRADBURY_CHAIN_ID = 4221;
 export const BRADBURY_CHAIN_ID_HEX = '0x107d';
 export const BRADBURY_GENESIS =
   '0x17d89764d4f4f963158fc4c5e8f2cb670c2837740b35f37081c12860c3df97e4';
 export const BRADBURY_ADDRESS_MANAGER = '0x3F71AE080BD6270A91dBcc7960d88797828538E0';
+export const STUDIONET_CHAIN_ID = 61999;
+
+export const NETWORK_PROFILES = {
+  bradbury: {
+    key: 'bradbury',
+    label: 'GenLayer Bradbury Testnet',
+    chainId: BRADBURY_CHAIN_ID,
+    genesis: BRADBURY_GENESIS,
+    addressManager: BRADBURY_ADDRESS_MANAGER,
+    consensusAddress: testnetBradbury.consensusMainContract?.address,
+    sdkChain: testnetBradbury,
+  },
+  studionet: {
+    key: 'studionet',
+    label: 'GenLayer Studio Network',
+    chainId: STUDIONET_CHAIN_ID,
+    genesis: null,
+    addressManager: null,
+    consensusAddress: studionet.consensusMainContract?.address,
+    sdkChain: studionet,
+  },
+} as const;
+
+export type NetworkProfile = (typeof NETWORK_PROFILES)[keyof typeof NETWORK_PROFILES];
 
 const addressManagerAbi = parseAbi(['function getAddressManager() view returns (address)']);
 const requiredMethods = [
@@ -19,6 +43,11 @@ const requiredMethods = [
 ] as const;
 
 let requestId = 0;
+
+export function getNetworkProfile(value: string | null | undefined): NetworkProfile | null {
+  const key = value?.trim().toLowerCase();
+  return key === 'bradbury' || key === 'studionet' ? NETWORK_PROFILES[key] : null;
+}
 
 function record(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -62,22 +91,25 @@ export async function nodeRpc(
   return body.result;
 }
 
-/**
- * Stops on every identity or capability mismatch. The endpoint must be a
- * GenLayer node RPC, not the chain-only RPC, because gen_* methods are required.
- */
-export async function verifyBradburyNode(endpoint: string, contractAddress: string): Promise<void> {
-  const chainId = await nodeRpc(endpoint, 'eth_chainId');
+function assertChainId(actual: unknown, profile: NetworkProfile): void {
   if (
-    typeof chainId !== 'string' ||
-    !/^0x[0-9a-fA-F]+$/.test(chainId) ||
-    BigInt(chainId) !== BigInt(BRADBURY_CHAIN_ID)
+    typeof actual !== 'string' ||
+    !/^0x[0-9a-fA-F]+$/.test(actual) ||
+    BigInt(actual) !== BigInt(profile.chainId)
   ) {
     throw new Error(
-      `Network identity mismatch: expected Bradbury Phase 2 chain ${BRADBURY_CHAIN_ID}.`,
+      `Network identity mismatch: expected ${profile.label} chain ${profile.chainId}.`,
     );
   }
+}
 
+function assertDeployedCode(actual: unknown, target: string): void {
+  if (typeof actual !== 'string' || !/^0x[0-9a-fA-F]{2,}$/.test(actual)) {
+    throw new Error(`Network identity mismatch: no deployed code at the required ${target}.`);
+  }
+}
+
+async function assertBradburyIdentity(endpoint: string): Promise<void> {
   const genesis = record(
     await nodeRpc(endpoint, 'eth_getBlockByNumber', ['0x0', false]),
     'Genesis block lookup',
@@ -86,12 +118,12 @@ export async function verifyBradburyNode(endpoint: string, contractAddress: stri
     throw new Error('Network identity mismatch: Bradbury genesis hash does not match.');
   }
 
-  const code = await nodeRpc(endpoint, 'eth_getCode', [BRADBURY_ADDRESS_MANAGER, 'latest']);
-  if (typeof code !== 'string' || code === '0x' || code.length <= 2) {
-    throw new Error('Network identity mismatch: the expected AddressManager has no deployed code.');
-  }
+  assertDeployedCode(
+    await nodeRpc(endpoint, 'eth_getCode', [BRADBURY_ADDRESS_MANAGER, 'latest']),
+    'Bradbury AddressManager',
+  );
 
-  const consensusAddress = testnetBradbury.consensusMainContract?.address;
+  const consensusAddress = NETWORK_PROFILES.bradbury.consensusAddress;
   if (!consensusAddress) throw new Error('The pinned SDK has no Bradbury consensus address.');
   const managerResult = await nodeRpc(endpoint, 'eth_call', [
     {
@@ -111,9 +143,33 @@ export async function verifyBradburyNode(endpoint: string, contractAddress: stri
   if (actualManager.toLowerCase() !== BRADBURY_ADDRESS_MANAGER.toLowerCase()) {
     throw new Error('Network identity mismatch: consensus reports a different AddressManager.');
   }
+}
 
-  // Bradbury resolves a deployed schema from code, then derives the schema.
-  // These calls distinguish a qualified GenLayer node from a chain-only RPC.
+/**
+ * Stops on every identity or capability mismatch. Studionet deliberately uses
+ * its pinned Studio consensus deployment rather than Bradbury-only genesis and
+ * AddressManager checks. Every profile still requires real gen_* methods.
+ */
+export async function verifyNetworkProfile(
+  profile: NetworkProfile,
+  endpoint: string,
+  contractAddress: string,
+): Promise<void> {
+  assertChainId(await nodeRpc(endpoint, 'eth_chainId'), profile);
+  const consensusAddress = profile.consensusAddress;
+  if (!consensusAddress) {
+    throw new Error(`The pinned SDK has no ${profile.label} consensus address.`);
+  }
+
+  if (profile.key === 'bradbury') {
+    await assertBradburyIdentity(endpoint);
+  } else {
+    assertDeployedCode(
+      await nodeRpc(endpoint, 'eth_getCode', [consensusAddress, 'latest']),
+      'Studionet consensus deployment',
+    );
+  }
+
   const contractCode = await nodeRpc(endpoint, 'gen_getContractCode', [
     { address: contractAddress },
   ]);
@@ -130,4 +186,9 @@ export async function verifyBradburyNode(endpoint: string, contractAddress: stri
       throw new Error(`Configured contract is not WeatherPact-compatible: missing ${method}.`);
     }
   }
+}
+
+/** Backward-compatible strict Bradbury entry point. */
+export async function verifyBradburyNode(endpoint: string, contractAddress: string): Promise<void> {
+  return verifyNetworkProfile(NETWORK_PROFILES.bradbury, endpoint, contractAddress);
 }

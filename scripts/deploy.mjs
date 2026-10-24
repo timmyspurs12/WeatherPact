@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { verifyNetwork } from './verify-network.mjs';
 
@@ -19,19 +19,33 @@ if (
   process.exit(1);
 }
 
+let qualification;
 // This must finish before the CLI can sign or submit anything. contractAddress:
 // null intentionally skips any old deployment and validates the current source.
 try {
-  await verifyNetwork({ contractAddress: null });
+  qualification = await verifyNetwork({ contractAddress: null });
 } catch (error) {
   console.error(
     `Deployment stopped before signing: ${error instanceof Error ? error.message : String(error)}`,
   );
   process.exit(1);
 }
-console.log('Read-only Bradbury qualification passed. Starting the pinned deployment CLI.');
+console.log(
+  `Read-only ${qualification.networkLabel} qualification passed. Selecting the matching pinned CLI profile.`,
+);
 
 const cli = fileURLToPath(new URL('../node_modules/genlayer/dist/index.js', import.meta.url));
+const selected = spawnSync(process.execPath, [cli, 'network', 'set', qualification.cliAlias], {
+  stdio: 'inherit',
+  env: process.env,
+});
+if (selected.error || selected.status !== 0) {
+  console.error(
+    `Deployment stopped before signing: could not select CLI network ${qualification.cliAlias}.`,
+  );
+  process.exit(1);
+}
+
 const child = spawn(
   process.execPath,
   [
@@ -40,7 +54,7 @@ const child = spawn(
     '--contract',
     'contracts/weatherpact.py',
     '--rpc',
-    process.env.GENLAYER_NODE_RPC_URL ?? process.env.VITE_GENLAYER_RPC_URL,
+    qualification.nodeRpcUrl,
     ...forwarded,
   ],
   { stdio: 'inherit', env: process.env },

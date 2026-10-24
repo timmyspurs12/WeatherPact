@@ -3,18 +3,39 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createClient } from 'genlayer-js';
-import { testnetBradbury } from 'genlayer-js/chains';
+import { studionet, testnetBradbury } from 'genlayer-js/chains';
 import { TransactionHashVariant } from 'genlayer-js/types';
 import { decodeFunctionResult, encodeFunctionData, getAddress, parseAbi } from 'viem';
 
 export const BRADBURY = Object.freeze({
+  key: 'bradbury',
+  cliAlias: 'testnet-bradbury',
+  label: 'Bradbury Phase 2',
   chainId: 4221,
   chainIdHex: '0x107d',
   genesis: '0x17d89764d4f4f963158fc4c5e8f2cb670c2837740b35f37081c12860c3df97e4',
   addressManager: '0x3F71AE080BD6270A91dBcc7960d88797828538E0',
+  consensusAddress: testnetBradbury.consensusMainContract?.address,
+  sdkChain: testnetBradbury,
+  defaultNodeRpc: null,
+  defaultChainRpc: 'https://rpc.testnet-chain.genlayer.com',
 });
 
-const DEFAULT_CHAIN_RPC = 'https://rpc.testnet-chain.genlayer.com';
+export const STUDIONET = Object.freeze({
+  key: 'studionet',
+  cliAlias: 'studionet',
+  label: 'Studionet',
+  chainId: 61999,
+  chainIdHex: '0xf22f',
+  genesis: null,
+  addressManager: null,
+  consensusAddress: studionet.consensusMainContract?.address,
+  sdkChain: studionet,
+  defaultNodeRpc: 'https://studio.genlayer.com/api',
+  defaultChainRpc: null,
+});
+
+const NETWORKS = Object.freeze({ bradbury: BRADBURY, studionet: STUDIONET });
 const REQUIRED_METHODS = [
   'create_pact',
   'resolve_pact',
@@ -34,10 +55,26 @@ function record(value, label) {
   return value;
 }
 
+function networkProfile(value) {
+  const key = (value ?? 'bradbury').trim().toLowerCase();
+  const profile = NETWORKS[key];
+  if (!profile) {
+    throw new Error(
+      `Unsupported GenLayer network "${value}". Choose exactly bradbury or studionet.`,
+    );
+  }
+  if (!profile.consensusAddress) {
+    throw new Error(
+      `The pinned genlayer-js release lacks ${profile.label} consensus configuration.`,
+    );
+  }
+  return profile;
+}
+
 function endpoint(value, label) {
   if (!value) {
     throw new Error(
-      `${label} is required. Set GENLAYER_NODE_RPC_URL (or VITE_GENLAYER_RPC_URL) to a qualified GenLayer node; the chain-only RPC is insufficient.`,
+      `${label} is required. Set GENLAYER_NODE_RPC_URL (or VITE_GENLAYER_RPC_URL) to a qualified GenLayer node; a chain-only RPC is insufficient.`,
     );
   }
   let parsed;
@@ -89,13 +126,15 @@ async function rpc(url, method, params = []) {
   return body.result;
 }
 
-function assertChainId(value, source) {
+function assertChainId(value, source, profile) {
   if (
     typeof value !== 'string' ||
     !/^0x[0-9a-fA-F]+$/.test(value) ||
-    BigInt(value) !== BigInt(BRADBURY.chainId)
+    BigInt(value) !== BigInt(profile.chainId)
   ) {
-    throw new Error(`${source} chain ID mismatch: expected ${BRADBURY.chainId}.`);
+    throw new Error(
+      `${source} chain ID mismatch: expected ${profile.label} chain ${profile.chainId}.`,
+    );
   }
 }
 
@@ -106,9 +145,9 @@ function assertGenesis(value, source) {
   }
 }
 
-function assertManagerCode(value, source) {
+function assertDeployedCode(value, source, target) {
   if (typeof value !== 'string' || !/^0x[0-9a-fA-F]{2,}$/.test(value)) {
-    throw new Error(`${source} has no code at the required AddressManager.`);
+    throw new Error(`${source} has no code at the required ${target}.`);
   }
 }
 
@@ -143,21 +182,46 @@ function assertWeatherPactSchema(value, label) {
 }
 
 /**
- * Read-only Bradbury qualification. No account, signing, funding, or write is used.
- * Pass contractAddress: null for the pre-deploy source-schema-only check.
+ * Read-only qualification for an explicitly selected supported network.
+ * Bradbury keeps its independent chain/genesis/AddressManager checks. Studionet
+ * uses its single official RPC and the pinned Studio consensus deployment.
+ * No account, signing, funding, or write is used.
  */
 export async function verifyNetwork(options = {}) {
+  const profile = networkProfile(
+    options.network ?? process.env.GENLAYER_NETWORK ?? process.env.VITE_GENLAYER_NETWORK,
+  );
   const nodeUrl = endpoint(
-    options.nodeRpcUrl ?? process.env.GENLAYER_NODE_RPC_URL ?? process.env.VITE_GENLAYER_RPC_URL,
-    'GenLayer node RPC',
+    options.nodeRpcUrl ??
+      process.env.GENLAYER_NODE_RPC_URL ??
+      process.env.VITE_GENLAYER_RPC_URL ??
+      profile.defaultNodeRpc,
+    `${profile.label} GenLayer RPC`,
   );
-  const chainUrl = endpoint(
-    options.chainRpcUrl ??
+  let chainUrl = null;
+  if (profile.key === 'bradbury') {
+    chainUrl = endpoint(
+      options.chainRpcUrl ??
+        process.env.GENLAYER_CHAIN_RPC_URL ??
+        process.env.VITE_GENLAYER_CHAIN_RPC_URL ??
+        profile.defaultChainRpc,
+      'Bradbury chain RPC',
+    );
+  } else {
+    const configuredStudioChain =
+      options.chainRpcUrl ??
       process.env.GENLAYER_CHAIN_RPC_URL ??
-      process.env.VITE_GENLAYER_CHAIN_RPC_URL ??
-      DEFAULT_CHAIN_RPC,
-    'Bradbury chain RPC',
-  );
+      process.env.VITE_GENLAYER_CHAIN_RPC_URL;
+    if (configuredStudioChain) {
+      const studioChainUrl = endpoint(configuredStudioChain, 'Studionet chain RPC');
+      if (studioChainUrl !== nodeUrl) {
+        throw new Error(
+          'Studionet uses one official GenLayer RPC. Remove the separate chain RPC or make it identical; never reuse the Bradbury chain RPC.',
+        );
+      }
+    }
+  }
+
   const configuredAddress =
     options.contractAddress === undefined
       ? (process.env.WEATHERPACT_CONTRACT_ADDRESS ?? process.env.VITE_WEATHERPACT_CONTRACT_ADDRESS)
@@ -166,40 +230,46 @@ export async function verifyNetwork(options = {}) {
     throw new Error('WEATHERPACT_CONTRACT_ADDRESS is required for post-deployment verification.');
   }
   const contractAddress = configuredAddress ? getAddress(configuredAddress) : null;
-  const consensusAddress = testnetBradbury.consensusMainContract?.address;
-  if (!consensusAddress)
-    throw new Error('The pinned genlayer-js release lacks Bradbury consensus configuration.');
 
-  // Check the node and the independent chain endpoint; either mismatch stops.
-  const [nodeChain, chainChain] = await Promise.all([
-    rpc(nodeUrl, 'eth_chainId'),
-    rpc(chainUrl, 'eth_chainId'),
-  ]);
-  assertChainId(nodeChain, 'GenLayer node');
-  assertChainId(chainChain, 'Chain RPC');
+  if (chainUrl) {
+    const [nodeChain, chainChain] = await Promise.all([
+      rpc(nodeUrl, 'eth_chainId'),
+      rpc(chainUrl, 'eth_chainId'),
+    ]);
+    assertChainId(nodeChain, 'GenLayer node', profile);
+    assertChainId(chainChain, 'Chain RPC', profile);
+  } else {
+    assertChainId(await rpc(nodeUrl, 'eth_chainId'), 'Studionet RPC', profile);
+  }
 
-  const [nodeGenesis, chainGenesis] = await Promise.all([
-    rpc(nodeUrl, 'eth_getBlockByNumber', ['0x0', false]),
-    rpc(chainUrl, 'eth_getBlockByNumber', ['0x0', false]),
-  ]);
-  assertGenesis(nodeGenesis, 'GenLayer node');
-  assertGenesis(chainGenesis, 'Chain RPC');
+  if (profile.key === 'bradbury') {
+    const [nodeGenesis, chainGenesis] = await Promise.all([
+      rpc(nodeUrl, 'eth_getBlockByNumber', ['0x0', false]),
+      rpc(chainUrl, 'eth_getBlockByNumber', ['0x0', false]),
+    ]);
+    assertGenesis(nodeGenesis, 'GenLayer node');
+    assertGenesis(chainGenesis, 'Chain RPC');
 
-  const [nodeCode, chainCode] = await Promise.all([
-    rpc(nodeUrl, 'eth_getCode', [BRADBURY.addressManager, 'latest']),
-    rpc(chainUrl, 'eth_getCode', [BRADBURY.addressManager, 'latest']),
-  ]);
-  assertManagerCode(nodeCode, 'GenLayer node');
-  assertManagerCode(chainCode, 'Chain RPC');
-  await Promise.all([
-    assertManagerPointer(nodeUrl, 'GenLayer node', consensusAddress),
-    assertManagerPointer(chainUrl, 'Chain RPC', consensusAddress),
-  ]);
+    const [nodeCode, chainCode] = await Promise.all([
+      rpc(nodeUrl, 'eth_getCode', [profile.addressManager, 'latest']),
+      rpc(chainUrl, 'eth_getCode', [profile.addressManager, 'latest']),
+    ]);
+    assertDeployedCode(nodeCode, 'GenLayer node', 'AddressManager');
+    assertDeployedCode(chainCode, 'Chain RPC', 'AddressManager');
+    await Promise.all([
+      assertManagerPointer(nodeUrl, 'GenLayer node', profile.consensusAddress),
+      assertManagerPointer(chainUrl, 'Chain RPC', profile.consensusAddress),
+    ]);
+  } else {
+    // The pinned stable Studio profile has no AddressManager pointer. Require
+    // code at its exact consensus deployment instead of copying Bradbury rules.
+    const consensusCode = await rpc(nodeUrl, 'eth_getCode', [profile.consensusAddress, 'latest']);
+    assertDeployedCode(consensusCode, 'Studionet RPC', 'consensus deployment');
+  }
 
-  const client = createClient({ chain: testnetBradbury, endpoint: nodeUrl });
+  const client = createClient({ chain: profile.sdkChain, endpoint: nodeUrl });
   const sourcePath = options.sourcePath ?? resolve('contracts/weatherpact.py');
   const source = await readFile(sourcePath, 'utf8');
-  // This requires a GenLayer node and validates the actual source before deploy.
   assertWeatherPactSchema(
     await genCall('gen_getContractSchema (source)', () => client.getContractSchemaForCode(source)),
     'Source schema',
@@ -216,7 +286,6 @@ export async function verifyNetwork(options = {}) {
       ),
       'Deployed contract schema',
     );
-    // A real read exercises gen_call, not only code/schema methods.
     const metadata = record(
       await genCall('gen_call (get_metadata)', () =>
         client.readContract({
@@ -233,7 +302,15 @@ export async function verifyNetwork(options = {}) {
     }
   }
 
-  return { chainId: BRADBURY.chainId, contractAddress, methods: REQUIRED_METHODS.length };
+  return {
+    network: profile.key,
+    cliAlias: profile.cliAlias,
+    networkLabel: profile.label,
+    nodeRpcUrl: nodeUrl,
+    chainId: profile.chainId,
+    contractAddress,
+    methods: REQUIRED_METHODS.length,
+  };
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null;
@@ -243,7 +320,7 @@ if (invokedPath === import.meta.url) {
       requireContract: process.argv.includes('--require-contract'),
     });
     console.log(
-      `Bradbury qualification passed: chain ${result.chainId}, ${result.methods} required methods, ${result.contractAddress ? 'deployed contract and gen_call verified' : 'pre-deploy source schema verified'}.`,
+      `${result.networkLabel} qualification passed: chain ${result.chainId}, ${result.methods} required methods, ${result.contractAddress ? 'deployed contract and gen_call verified' : 'pre-deploy source schema verified'}.`,
     );
   } catch (error) {
     console.error(

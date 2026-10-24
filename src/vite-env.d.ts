@@ -2,9 +2,11 @@
 
 interface ImportMetaEnv {
   readonly VITE_WEATHERPACT_CONTRACT_ADDRESS?: string;
+  readonly VITE_GENLAYER_NETWORK?: string;
   readonly VITE_GENLAYER_CHAIN_ID?: string;
   readonly VITE_GENLAYER_CHAIN_NAME?: string;
   readonly VITE_GENLAYER_RPC_URL?: string;
+  readonly VITE_GENLAYER_CHAIN_RPC_URL?: string;
   readonly VITE_GENLAYER_EXPLORER_URL?: string;
 }
 
