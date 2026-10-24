@@ -163,13 +163,11 @@ export async function verifyNetworkProfile(
 
   if (profile.key === 'bradbury') {
     await assertBradburyIdentity(endpoint);
-  } else {
-    assertDeployedCode(
-      await nodeRpc(endpoint, 'eth_getCode', [consensusAddress, 'latest']),
-      'Studionet consensus deployment',
-    );
   }
 
+  // Studio consensus configuration is static in the pinned SDK/CLI. Do not
+  // assume its RPC exposes EVM bytecode at that address. Deployed WeatherPact
+  // code/schema and the subsequent metadata gen_call remain mandatory.
   const contractCode = await nodeRpc(endpoint, 'gen_getContractCode', [
     { address: contractAddress },
   ]);

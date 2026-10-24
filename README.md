@@ -12,7 +12,7 @@ The contract fetches Open-Meteo Historical Weather API evidence inside GenLayer'
 | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Intelligent Contract               | Implemented in `contracts/weatherpact.py`; local Direct Mode, lint, schema, and type checks pass |
 | Real frontend adapter              | Implemented with `genlayer-js@2.0.0-rc.2`; strict TypeScript and production build pass           |
-| Local guard tests                  | 5 transaction-journal tests and 10 network-verification tests pass                               |
+| Local guard tests                  | 5 transaction-journal tests and 11 network-verification tests pass                               |
 | Live Studionet qualification       | **Pending**: official hosted RPC configured; GitHub Actions read-only check not yet completed    |
 | Previous Bradbury target           | Paused by the missing qualified node RPC and faucet eligibility; not substituted silently        |
 | Contract deployment                | **Not performed**; no deployment address or transaction is claimed                               |
@@ -129,7 +129,7 @@ Latest local results:
 - **3/3 fast GenVM lint checks passed**.
 - **Schema validation passed: WeatherPact, 7 methods (5 view, 2 write)**.
 - **Pyright: no type errors**.
-- **5/5 journal tests and 10/10 network guard tests passed**.
+- **5/5 journal tests and 11/11 network guard tests passed**.
 - **Strict TypeScript and Vite production build passed**.
 
 These are local tests, not a live deployment or production-runner deployment proof. Docker-based Studio/localnet integration was not run because Docker is unavailable in this environment.
@@ -171,7 +171,7 @@ The official [network](https://docs.genlayer.com/developers/networks) and [CLI c
 - pinned consensus deployment: **`0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575`**;
 - one official RPC, with no separate chain RPC or Bradbury AddressManager assumption.
 
-The Studionet guard checks the exact chain ID, deployed code at the pinned consensus address, and the actual contract source schema through GenLayer RPC. After deployment it also checks deployed code/schema and an actual latest-final `get_metadata` read through `gen_call`.
+The Studionet guard checks the exact chain ID, requires the pinned SDK/CLI consensus configuration, and validates the actual contract source schema through Studio's GenLayer RPC. It does not assume that Studio exposes EVM bytecode at the static consensus address. Chain ID alone is insufficient. After deployment the guard also checks deployed code/schema and an actual latest-final `get_metadata` read through `gen_call`.
 
 ### Preserved Bradbury Phase 2 profile
 

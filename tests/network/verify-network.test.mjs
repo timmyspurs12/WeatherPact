@@ -162,14 +162,14 @@ test('requires actual gen_* support rather than accepting eth_* alone', async ()
   await assert.rejects(verify(), /gen_getContractSchema/);
 });
 
-test('qualifies Studionet with its own chain, consensus code, and source schema', async () => {
+test('qualifies Studionet with its own chain, pinned profile, and source schema', async () => {
   state.nodeChain = STUDIONET.chainIdHex;
   const result = await verifyStudio();
   assert.equal(result.network, 'studionet');
   assert.equal(result.chainId, 61999);
   assert.equal(result.cliAlias, 'studionet');
   assert.equal(result.methods, 7);
-  assert.ok(state.calls.includes('node:eth_getCode'));
+  assert.equal(state.calls.includes('node:eth_getCode'), false);
   assert.ok(state.calls.includes('node:gen_getContractSchemaForCode'));
   assert.equal(
     state.calls.some((call) => call.startsWith('chain:')),
@@ -189,4 +189,10 @@ test('rejects a separate chain RPC for the single-endpoint Studionet profile', a
     verifyStudio({ chainRpcUrl: `${base}/chain` }),
     /Studionet uses one official GenLayer RPC/,
   );
+});
+
+test('does not qualify Studionet from chain ID without GenLayer schema support', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  state.schemaError = true;
+  await assert.rejects(verifyStudio(), /gen_getContractSchema/);
 });

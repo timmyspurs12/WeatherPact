@@ -260,13 +260,12 @@ export async function verifyNetwork(options = {}) {
       assertManagerPointer(nodeUrl, 'GenLayer node', profile.consensusAddress),
       assertManagerPointer(chainUrl, 'Chain RPC', profile.consensusAddress),
     ]);
-  } else {
-    // The pinned stable Studio profile has no AddressManager pointer. Require
-    // code at its exact consensus deployment instead of copying Bradbury rules.
-    const consensusCode = await rpc(nodeUrl, 'eth_getCode', [profile.consensusAddress, 'latest']);
-    assertDeployedCode(consensusCode, 'Studionet RPC', 'consensus deployment');
   }
 
+  // Studio's pinned SDK/CLI consensus configuration is intentionally static.
+  // Its RPC does not expose EVM bytecode at that address, so do not copy the
+  // Bradbury eth_getCode rule. The actual Studio gen_* source-schema call below
+  // is mandatory; chain ID alone can never qualify this profile.
   const client = createClient({ chain: profile.sdkChain, endpoint: nodeUrl });
   const sourcePath = options.sourcePath ?? resolve('contracts/weatherpact.py');
   const source = await readFile(sourcePath, 'utf8');
