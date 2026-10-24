@@ -13,7 +13,7 @@ The contract fetches Open-Meteo Historical Weather API evidence inside GenLayer'
 | Intelligent Contract               | Stable GenVM `v0.2.16` lint/schema validation and 38/38 Direct Mode tests pass in hosted CI                 |
 | Real frontend adapter              | Ported to stable `genlayer-js@1.1.8`; strict TypeScript and production build pass                           |
 | Local guard tests                  | 5 transaction-journal tests and 12 network-verification tests pass against the stable SDK                   |
-| Live Studionet qualification       | **Read-only source-schema guard passed** in Actions run `40117702127`; deployed-contract checks are pending |
+| Live Studionet qualification       | **Read-only source-schema guard passed** in Actions run `40118011162`; deployed-contract checks are pending |
 | Previous Bradbury target           | Paused by the missing qualified node RPC and faucet eligibility; not substituted silently                   |
 | Contract deployment                | **Not performed**; no deployment address or transaction is claimed                                          |
 | On-chain writes/weather resolution | **Not performed**; no measured stable fee profile or live consensus result is claimed                       |
@@ -129,7 +129,7 @@ Current migration results:
 
 - **5/5 journal tests and 12/12 network guard tests passed** with stable `genlayer-js@1.1.8`.
 - **Strict TypeScript and Vite production build passed** after removing RC-only fee/finality APIs.
-- **Hosted stable qualification passed** in [Actions run 40117702127](https://github.com/timmyspurs12/WeatherPact/actions/runs/40117702127): GenVM `v0.2.16` lint and semantic schema validation, **38/38 Direct Mode tests**, stable frontend checks, and the read-only Studionet source-schema guard with all seven required methods.
+- **Hosted stable qualification passed** in [Actions run 40118011162](https://github.com/timmyspurs12/WeatherPact/actions/runs/40118011162): GenVM `v0.2.16` lint and semantic schema validation, **38/38 Direct Mode tests**, stable frontend checks, and the read-only Studionet source-schema guard with all seven required methods.
 
 These are source/local tests, not a live deployment or production-runner deployment proof. Docker-based Studio/localnet integration was not run because Docker is unavailable in this environment.
 
