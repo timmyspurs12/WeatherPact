@@ -13,7 +13,7 @@ CREATE_TIME = "2026-10-01T09:30:00+00:00"
 def to_hex(address):
     if hasattr(address, "as_hex"):
         return address.as_hex
-    from genlayer.types import Address
+    from genlayer.py.types import Address
 
     return Address(address).as_hex
 

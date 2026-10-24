@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { after, before, beforeEach, test } from 'node:test';
 import { encodeFunctionResult, parseAbi } from 'viem';
-import { BRADBURY, verifyNetwork } from '../../scripts/verify-network.mjs';
+import { BRADBURY, STUDIONET, verifyNetwork } from '../../scripts/verify-network.mjs';
 
 const abi = parseAbi(['function getAddressManager() view returns (address)']);
 const methods = Object.fromEntries(
@@ -16,7 +16,8 @@ const methods = Object.fromEntries(
     'get_metadata',
   ].map((name) => [name, { readonly: name.startsWith('get_') }]),
 );
-const METADATA_RESULT = '0x16046e616d655c57656174686572506163740776657273696f6e09';
+// Stable genlayer-js prefixes gen_call hex results after reading the RPC response.
+const METADATA_RESULT = '16046e616d655c57656174686572506163740776657273696f6e09';
 const state = {
   nodeChain: BRADBURY.chainIdHex,
   chainChain: BRADBURY.chainIdHex,
@@ -61,6 +62,7 @@ before(async () => {
           });
           break;
         case 'gen_getContractSchema':
+        case 'gen_getContractSchemaForCode':
           if (state.schemaError) error = { code: -32601, message: 'method not found' };
           else result = state.schema;
           break;
@@ -109,6 +111,15 @@ function verify(overrides = {}) {
   });
 }
 
+function verifyStudio(overrides = {}) {
+  return verifyNetwork({
+    network: 'studionet',
+    nodeRpcUrl: `${base}/node`,
+    contractAddress: null,
+    ...overrides,
+  });
+}
+
 test('qualifies Bradbury identity and the actual contract source schema', async () => {
   const result = await verify();
   assert.equal(result.chainId, 4221);
@@ -150,4 +161,49 @@ test('rejects a source schema without every required contract method', async () 
 test('requires actual gen_* support rather than accepting eth_* alone', async () => {
   state.schemaError = true;
   await assert.rejects(verify(), /gen_getContractSchema/);
+});
+
+test('qualifies Studionet with its own chain, pinned profile, and source schema', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  const result = await verifyStudio();
+  assert.equal(result.network, 'studionet');
+  assert.equal(result.chainId, 61999);
+  assert.equal(result.cliAlias, 'studionet');
+  assert.equal(result.methods, 7);
+  assert.equal(state.calls.includes('node:eth_getCode'), false);
+  assert.ok(state.calls.includes('node:gen_getContractSchemaForCode'));
+  assert.equal(
+    state.calls.some((call) => call.startsWith('chain:')),
+    false,
+  );
+});
+
+test('verifies a Studionet deployment through code, schema, and gen_call', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  const result = await verifyStudio({ contractAddress: STUDIONET.consensusAddress });
+  assert.equal(result.network, 'studionet');
+  assert.equal(result.contractAddress, STUDIONET.consensusAddress);
+  assert.ok(state.calls.includes('node:gen_getContractCode'));
+  assert.ok(state.calls.includes('node:gen_getContractSchema'));
+  assert.ok(state.calls.includes('node:gen_call'));
+});
+
+test('stops Studionet on a chain mismatch before schema work', async () => {
+  state.nodeChain = BRADBURY.chainIdHex;
+  await assert.rejects(verifyStudio(), /expected Studionet chain 61999/);
+  assert.equal(state.calls.includes('node:gen_getContractSchema'), false);
+});
+
+test('rejects a separate chain RPC for the single-endpoint Studionet profile', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  await assert.rejects(
+    verifyStudio({ chainRpcUrl: `${base}/chain` }),
+    /Studionet uses one official GenLayer RPC/,
+  );
+});
+
+test('does not qualify Studionet from chain ID without GenLayer schema support', async () => {
+  state.nodeChain = STUDIONET.chainIdHex;
+  state.schemaError = true;
+  await assert.rejects(verifyStudio(), /gen_getContractSchema/);
 });

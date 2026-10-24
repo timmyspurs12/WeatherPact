@@ -1,11 +1,11 @@
-# { "Depends": "py-genlayer:0pmqsckm6f5rk0944prs1a290dtftkj2yevk92ex9qye6bdy9ztm" }
+# v0.2.16
+# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-import genlayer as gl
-from genlayer.storage import allow as allow_storage
+from genlayer import gl, allow_storage
 
 
 SOURCE_NAME = "Open-Meteo Historical Weather API"
@@ -783,7 +783,7 @@ class Reputation:
     finalized: gl.u256
 
 
-class WeatherPact(gl.contract.Contract):
+class WeatherPact(gl.Contract):
     pacts: gl.storage.TreeMap[str, Pact]
     pact_ids: gl.storage.DynArray[str]
     activities: gl.storage.DynArray[Activity]
@@ -1003,7 +1003,7 @@ class WeatherPact(gl.contract.Contract):
             try:
                 observation = _observation(response.body, source_url, metric, target_date, zone)
             except gl.vm.UserError as error:
-                message = error.data if isinstance(error.data, str) else ERROR_EXTERNAL + "invalid weather response"
+                message = error.message if isinstance(error.message, str) else ERROR_EXTERNAL + "invalid weather response"
                 return failure(message)
             except Exception:
                 return failure(ERROR_EXTERNAL + "malformed or unexpected weather response")
