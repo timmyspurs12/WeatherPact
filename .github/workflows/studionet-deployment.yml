@@ -37,7 +37,6 @@ jobs:
       GENLAYER_NETWORK: studionet
       GENLAYER_NODE_RPC_URL: https://studio.genlayer.com/api
       WEATHERPACT_CONTRACT_ADDRESS: ''
-      WEATHERPACT_DEPLOYMENT_JOURNAL: ${{ runner.temp }}/weatherpact-deployment.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -110,6 +109,7 @@ jobs:
         id: deploy
         if: inputs.deployment_tx == ''
         env:
+          WEATHERPACT_DEPLOYMENT_JOURNAL: ${{ runner.temp }}/weatherpact-deployment.json
           WEATHERPACT_KEYSTORE_PASSWORD: ${{ secrets.WEATHERPACT_STUDIONET_KEYSTORE_PASSWORD }}
         run: npm run deploy:contract
 
@@ -117,6 +117,7 @@ jobs:
         id: finalize
         if: always() && steps.preflight.outputs.ready == 'true' && (inputs.deployment_tx != '' || steps.deploy.outputs.resume_allowed == 'true')
         env:
+          WEATHERPACT_DEPLOYMENT_JOURNAL: ${{ runner.temp }}/weatherpact-deployment.json
           WEATHERPACT_CONTRACT_SOURCE_SHA256: ${{ steps.preflight.outputs.contract_sha256 }}
         run: |
           set -euo pipefail
