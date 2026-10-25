@@ -18,7 +18,7 @@ on:
       expected_deployer:
         description: Expected public address of the encrypted deployment account
         required: true
-        default: '0x96523f15a671772D498E27176B80A20A76077314'
+        default: '0xd70e488a50afbe209f82730ee8c14826112ad354'
         type: string
 
 permissions:
