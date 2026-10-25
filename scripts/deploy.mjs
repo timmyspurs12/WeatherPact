@@ -36,6 +36,12 @@ if (rawPassword && (!password || /[\r\n]/.test(password))) {
   );
   process.exit(1);
 }
+if (process.env.GITHUB_ACTIONS === 'true' && !password) {
+  console.error(
+    'Deployment stopped before signing: WEATHERPACT_KEYSTORE_PASSWORD is required in GitHub Actions.',
+  );
+  process.exit(1);
+}
 
 try {
   assertNoPriorDeployment(journalPath);
