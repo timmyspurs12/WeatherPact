@@ -132,7 +132,10 @@ test('accepts finalized successful execution in both pinned SDK receipt shapes',
       status: 7,
       status_name: 'FINALIZED',
       consensus_data: {
-        leader_receipt: [{ execution_result: 'SUCCESS', result: { status: 'return' } }],
+        leader_receipt: [
+          { execution_result: 'SUCCESS', result: { status: 'return' } },
+          { execution_result: 'SUCCESS', result: { status: 'return' } },
+        ],
       },
     },
     'studionet',
@@ -153,7 +156,7 @@ test('accepts finalized successful execution in both pinned SDK receipt shapes',
   assert.equal(decoded.executionSuccessful, true);
 });
 
-test('rejects non-final, failed, explicit-error, missing, or ambiguous execution receipts', () => {
+test('rejects non-final, failed, explicit-error, missing, or mixed execution receipts', () => {
   const leader = { execution_result: 'SUCCESS', result: { status: 'return' } };
   const receipt = {
     status: 7,
@@ -179,7 +182,13 @@ test('rejects non-final, failed, explicit-error, missing, or ambiguous execution
       },
     },
     { ...receipt, txExecutionResultName: 'FINISHED_WITH_ERROR' },
-    { ...receipt, consensus_data: { leader_receipt: [leader, leader] } },
+    {
+      ...receipt,
+      consensus_data: {
+        leader_receipt: [leader, { execution_result: 'ERROR', result: { status: 'error' } }],
+      },
+    },
+    { ...receipt, consensus_data: { leader_receipt: [] } },
     { status: 7, status_name: 'FINALIZED' },
   ]) {
     assert.equal(inspectDeploymentReceipt(candidate, 'studionet').executionSuccessful, false);

@@ -51,11 +51,14 @@ export function inspectDeploymentReceipt(receipt, network) {
     receipt?.txExecutionResult === undefined
   ) {
     const leaderReceipts = receipt?.consensus_data?.leader_receipt;
-    if (Array.isArray(leaderReceipts) && leaderReceipts.length === 1) {
-      const leader = leaderReceipts[0];
-      execution = leader?.execution_result ?? execution;
-      resultCode = leader?.result?.status;
-      executionSuccessful = execution === 'SUCCESS' && resultCode === 'return';
+    if (Array.isArray(leaderReceipts) && leaderReceipts.length > 0) {
+      const executions = leaderReceipts.map((leader) => leader?.execution_result ?? 'unknown');
+      const resultCodes = leaderReceipts.map((leader) => leader?.result?.status ?? 'unknown');
+      execution = [...new Set(executions)].join(',');
+      resultCode = [...new Set(resultCodes)].join(',');
+      executionSuccessful =
+        executions.every((value) => value === 'SUCCESS') &&
+        resultCodes.every((value) => value === 'return');
     } else {
       executionSuccessful = false;
     }
