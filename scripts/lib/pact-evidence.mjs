@@ -48,6 +48,24 @@ export function sameAddress(left, right) {
   );
 }
 
+export function encryptedKeystoreAddress(keystore) {
+  if (
+    !keystore ||
+    typeof keystore !== 'object' ||
+    !(keystore.crypto || keystore.Crypto) ||
+    typeof keystore.address !== 'string' ||
+    'privateKey' in keystore ||
+    'privatekey' in keystore
+  ) {
+    throw new Error('The encrypted deployer keystore has an invalid shape.');
+  }
+  const address = keystore.address.startsWith('0x') ? keystore.address : `0x${keystore.address}`;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error('The encrypted deployer keystore has an invalid address.');
+  }
+  return address;
+}
+
 export function assertTransactionCalldata(transaction, method, expectedArgs) {
   const raw = transaction?.data?.calldata?.raw;
   if (

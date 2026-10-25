@@ -18,6 +18,7 @@ import {
   DEMONSTRATION_CONTRACT,
   DEMONSTRATION_PACT,
   DEMONSTRATION_SOURCE_SHA256,
+  encryptedKeystoreAddress,
   pactMatchesDemonstration,
 } from './lib/pact-evidence.mjs';
 
@@ -124,15 +125,8 @@ function readEncryptedAccount() {
       join(homedir(), '.genlayer', 'keystores', 'weatherpact-deployer-v2.json'),
   );
   const keystore = JSON.parse(readFileSync(keystorePath, 'utf8'));
-  if (
-    !keystore ||
-    keystore.version !== 3 ||
-    !keystore.crypto ||
-    !/^[0-9a-fA-F]{40}$/.test(keystore.address || '')
-  ) {
-    fail('The encrypted deployer keystore has an invalid shape.');
-  }
-  if (getAddress(`0x${keystore.address}`) !== accountAddress) {
+  const address = encryptedKeystoreAddress(keystore);
+  if (getAddress(address) !== accountAddress) {
     fail('The encrypted keystore does not belong to the expected demonstration account.');
   }
   return { keystore, keystorePath };

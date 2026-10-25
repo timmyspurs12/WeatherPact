@@ -15,6 +15,7 @@ import {
   DEMONSTRATION_ARGS,
   DEMONSTRATION_PACT,
   DEMONSTRATION_SOURCE_URL,
+  encryptedKeystoreAddress,
   HISTORICAL_DATASET_NOTE,
   pactMatchesDemonstration,
 } from '../../scripts/lib/pact-evidence.mjs';
@@ -133,6 +134,26 @@ test('an uncertain submission journal locks retries before credentials or RPC', 
     assert.doesNotMatch(result.stderr, /Signing preflight|GenLayer RPC error/);
   } finally {
     rmSync(evidenceDirectory, { recursive: true, force: true });
+  }
+});
+
+test('CLI encrypted keystore shapes are accepted without permitting plaintext keys', () => {
+  const addressWithoutPrefix = DEMONSTRATION_ACCOUNT.slice(2);
+  for (const keystore of [
+    { version: 3, Crypto: {}, address: addressWithoutPrefix },
+    { version: 3, crypto: {}, address: addressWithoutPrefix },
+    { version: 3, Crypto: {}, address: DEMONSTRATION_ACCOUNT },
+    { version: 3, crypto: {}, address: DEMONSTRATION_ACCOUNT },
+  ]) {
+    assert.equal(encryptedKeystoreAddress(keystore).toLowerCase(), DEMONSTRATION_ACCOUNT);
+  }
+  for (const keystore of [
+    { version: 3, address: addressWithoutPrefix },
+    { version: 3, Crypto: {}, address: 'not-an-address' },
+    { version: 3, Crypto: {}, address: addressWithoutPrefix, privateKey: '0x00' },
+    { version: 3, crypto: {}, address: addressWithoutPrefix, privatekey: '0x00' },
+  ]) {
+    assert.throws(() => encryptedKeystoreAddress(keystore));
   }
 });
 
