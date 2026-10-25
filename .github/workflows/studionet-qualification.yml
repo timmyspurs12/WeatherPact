@@ -19,6 +19,7 @@ on:
       - 'scripts/deploy.mjs'
       - 'scripts/finalize-deployment.mjs'
       - 'scripts/verify-deployment-account.mjs'
+      - 'scripts/studionet-pact-evidence.mjs'
       - 'scripts/lib/**'
       - 'src/client/**'
       - 'package.json'
@@ -82,6 +83,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check the Studionet evidence runner syntax
+        run: node --check scripts/studionet-pact-evidence.mjs
       - name: Run client and network fixtures
         run: |
           log="$RUNNER_TEMP/weatherpact-fixtures.log"
