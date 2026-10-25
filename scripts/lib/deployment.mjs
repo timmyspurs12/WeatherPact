@@ -35,6 +35,41 @@ export function deploymentHashFromOutput(value) {
   return hashes[0] ?? null;
 }
 
+export function inspectDeploymentReceipt(receipt, network) {
+  const status =
+    receipt?.statusName ?? receipt?.status_name ?? String(receipt?.status ?? 'unknown');
+  let execution = receipt?.txExecutionResultName ?? String(receipt?.txExecutionResult ?? 'unknown');
+  let resultCode;
+  let executionSuccessful = execution === 'FINISHED_WITH_RETURN';
+
+  // genlayer-js 1.1.8 simplified Studionet receipts rename statusName to
+  // status_name and preserve GenVM execution under the leader receipt. Never
+  // override an explicit top-level execution result with this fallback.
+  if (
+    network === 'studionet' &&
+    receipt?.txExecutionResultName === undefined &&
+    receipt?.txExecutionResult === undefined
+  ) {
+    const leaderReceipts = receipt?.consensus_data?.leader_receipt;
+    if (Array.isArray(leaderReceipts) && leaderReceipts.length === 1) {
+      const leader = leaderReceipts[0];
+      execution = leader?.execution_result ?? execution;
+      resultCode = leader?.result?.status;
+      executionSuccessful = execution === 'SUCCESS' && resultCode === 'return';
+    } else {
+      executionSuccessful = false;
+    }
+  }
+
+  return {
+    status,
+    execution,
+    resultCode,
+    finalized: status === 'FINALIZED',
+    executionSuccessful,
+  };
+}
+
 export function deploymentJournalPath(value, cwd = process.cwd()) {
   const root = resolve(cwd);
   const path = resolve(root, value ?? '.secrets/weatherpact-deployment.json');

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { createClient } from 'genlayer-js';
 import { studionet, testnetBradbury } from 'genlayer-js/chains';
-import { ExecutionResult, TransactionStatus } from 'genlayer-js/types';
+import { TransactionStatus } from 'genlayer-js/types';
 import { getAddress } from 'viem';
 import {
   appendDeploymentOutput,
   deploymentJournalPath,
+  inspectDeploymentReceipt,
   recordFinalizedDeployment,
 } from './lib/deployment.mjs';
 
@@ -69,14 +70,11 @@ const receipt = await client.waitForTransactionReceipt({
   interval: 5_000,
   retries: 120,
 });
-if (
-  receipt.statusName !== TransactionStatus.FINALIZED ||
-  receipt.txExecutionResultName !== ExecutionResult.FINISHED_WITH_RETURN
-) {
-  const status = receipt.statusName ?? String(receipt.status ?? 'unknown');
-  const execution = receipt.txExecutionResultName ?? String(receipt.txExecutionResult ?? 'unknown');
+const receiptStatus = inspectDeploymentReceipt(receipt, profile.key);
+if (!receiptStatus.finalized || !receiptStatus.executionSuccessful) {
+  const result = receiptStatus.resultCode ? `, result ${receiptStatus.resultCode}` : '';
   throw new Error(
-    `Deployment ${hash} finalized without successful execution (status ${status}, execution ${execution}).`,
+    `Deployment ${hash} did not reach finalized successful execution (status ${receiptStatus.status}, execution ${receiptStatus.execution}${result}).`,
   );
 }
 // Re-read the full finalized transaction only to recover the deployed address;

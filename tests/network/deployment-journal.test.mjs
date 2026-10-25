@@ -8,6 +8,7 @@ import {
   assertNoPriorDeployment,
   deploymentHashFromOutput,
   deploymentJournalPath,
+  inspectDeploymentReceipt,
   recordFinalizedDeployment,
   recordSubmittedDeployment,
   redactDeploymentOutput,
@@ -123,4 +124,65 @@ test('rejects malformed journals and unsafe repository journal locations', () =>
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('accepts finalized successful execution in both pinned SDK receipt shapes', () => {
+  const studio = inspectDeploymentReceipt(
+    {
+      status: 7,
+      status_name: 'FINALIZED',
+      consensus_data: {
+        leader_receipt: [{ execution_result: 'SUCCESS', result: { status: 'return' } }],
+      },
+    },
+    'studionet',
+  );
+  assert.deepEqual(studio, {
+    status: 'FINALIZED',
+    execution: 'SUCCESS',
+    resultCode: 'return',
+    finalized: true,
+    executionSuccessful: true,
+  });
+
+  const decoded = inspectDeploymentReceipt(
+    { statusName: 'FINALIZED', txExecutionResultName: 'FINISHED_WITH_RETURN' },
+    'bradbury',
+  );
+  assert.equal(decoded.finalized, true);
+  assert.equal(decoded.executionSuccessful, true);
+});
+
+test('rejects non-final, failed, explicit-error, missing, or ambiguous execution receipts', () => {
+  const leader = { execution_result: 'SUCCESS', result: { status: 'return' } };
+  const receipt = {
+    status: 7,
+    status_name: 'FINALIZED',
+    consensus_data: { leader_receipt: [leader] },
+  };
+
+  const nonFinal = inspectDeploymentReceipt({ ...receipt, status_name: 'ACCEPTED' }, 'studionet');
+  assert.equal(nonFinal.finalized, false);
+  assert.equal(nonFinal.executionSuccessful, true);
+
+  for (const candidate of [
+    {
+      ...receipt,
+      consensus_data: {
+        leader_receipt: [{ execution_result: 'ERROR', result: { status: 'error' } }],
+      },
+    },
+    {
+      ...receipt,
+      consensus_data: {
+        leader_receipt: [{ execution_result: 'SUCCESS', result: { status: 'rollback' } }],
+      },
+    },
+    { ...receipt, txExecutionResultName: 'FINISHED_WITH_ERROR' },
+    { ...receipt, consensus_data: { leader_receipt: [leader, leader] } },
+    { status: 7, status_name: 'FINALIZED' },
+  ]) {
+    assert.equal(inspectDeploymentReceipt(candidate, 'studionet').executionSuccessful, false);
+  }
+  assert.equal(inspectDeploymentReceipt(receipt, 'bradbury').executionSuccessful, false);
 });
