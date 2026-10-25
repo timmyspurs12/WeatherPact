@@ -35,6 +35,27 @@ export const DEMONSTRATION_ARGS = Object.freeze([
   DEMONSTRATION_PACT.prediction,
 ]);
 
+export const CURRENT_YEAR_PACT = Object.freeze({
+  ...DEMONSTRATION_PACT,
+  targetDate: '2026-10-25',
+});
+export const CURRENT_YEAR_ARGS = Object.freeze([
+  CURRENT_YEAR_PACT.locationName,
+  CURRENT_YEAR_PACT.admin1,
+  CURRENT_YEAR_PACT.country,
+  CURRENT_YEAR_PACT.countryCode,
+  CURRENT_YEAR_PACT.latitude,
+  CURRENT_YEAR_PACT.longitude,
+  CURRENT_YEAR_PACT.timezone,
+  CURRENT_YEAR_PACT.targetDate,
+  CURRENT_YEAR_PACT.metric,
+  CURRENT_YEAR_PACT.operator,
+  CURRENT_YEAR_PACT.threshold,
+  CURRENT_YEAR_PACT.prediction,
+]);
+export const CURRENT_YEAR_PACT_ID = 'WP-0000000002';
+export const CURRENT_YEAR_READY_AT = '2026-11-01T00:00:00Z';
+
 export const DEMONSTRATION_SOURCE_URL =
   'https://archive-api.open-meteo.com/v1/archive?latitude=6.5244&longitude=3.3792&start_date=2025-06-15&end_date=2025-06-15&daily=rain_sum&timezone=Africa%2FLagos&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timeformat=iso8601';
 export const HISTORICAL_DATASET_NOTE =
@@ -94,25 +115,33 @@ export function assertTransactionCalldata(transaction, method, expectedArgs) {
   return true;
 }
 
-export function pactMatchesDemonstration(pact, account = DEMONSTRATION_ACCOUNT) {
+function pactMatchesDefinition(pact, definition, account) {
   if (!pact || typeof pact !== 'object' || !sameAddress(pact.creator, account)) return false;
   const location = pact.location;
   if (!location || typeof location !== 'object') return false;
   const locationMatches = [
-    ['name', DEMONSTRATION_PACT.locationName],
-    ['admin1', DEMONSTRATION_PACT.admin1],
-    ['country', DEMONSTRATION_PACT.country],
-    ['countryCode', DEMONSTRATION_PACT.countryCode],
-    ['latitude', DEMONSTRATION_PACT.latitude],
-    ['longitude', DEMONSTRATION_PACT.longitude],
-    ['timezone', DEMONSTRATION_PACT.timezone],
+    ['name', definition.locationName],
+    ['admin1', definition.admin1],
+    ['country', definition.country],
+    ['countryCode', definition.countryCode],
+    ['latitude', definition.latitude],
+    ['longitude', definition.longitude],
+    ['timezone', definition.timezone],
   ].every(([key, value]) => location[key] === value);
   return (
     locationMatches &&
     ['targetDate', 'metric', 'operator', 'threshold', 'prediction'].every(
-      (key) => pact[key] === DEMONSTRATION_PACT[key],
+      (key) => pact[key] === definition[key],
     )
   );
+}
+
+export function pactMatchesDemonstration(pact, account = DEMONSTRATION_ACCOUNT) {
+  return pactMatchesDefinition(pact, DEMONSTRATION_PACT, account);
+}
+
+export function pactMatchesCurrentYear(pact, account = DEMONSTRATION_ACCOUNT) {
+  return pactMatchesDefinition(pact, CURRENT_YEAR_PACT, account);
 }
 
 export function conditionHolds(observedValue, threshold, operator) {
@@ -147,9 +176,56 @@ export function assertCreatedDemonstration(pact, account = DEMONSTRATION_ACCOUNT
   return true;
 }
 
+export function assertCurrentYearCreation(
+  { pact, reputation, activity, metadata },
+  account = DEMONSTRATION_ACCOUNT,
+) {
+  if (!pactMatchesCurrentYear(pact, account)) {
+    throw new Error('Stored pact does not match the authorized 2026 Lagos pact and creator.');
+  }
+  if (pact.id !== CURRENT_YEAR_PACT_ID) {
+    throw new Error(`Expected the second pact ${CURRENT_YEAR_PACT_ID}, received ${pact.id}.`);
+  }
+  if (!['OPEN', 'READY_TO_RESOLVE'].includes(pact.status)) {
+    throw new Error(`New 2026 pact has an unexpected status ${pact.status}.`);
+  }
+  if (pact.readyAt !== CURRENT_YEAR_READY_AT) {
+    throw new Error(`New 2026 pact has unexpected eligibility ${pact.readyAt}.`);
+  }
+  if (pact.unit !== 'mm' || !Number.isFinite(Date.parse(pact.createdAt))) {
+    throw new Error('New 2026 pact unit or creation timestamp is invalid.');
+  }
+  if (!metadata || Number(metadata.pactCount) !== 2 || Number(metadata.activityCount) !== 3) {
+    throw new Error('2026 creation must leave exactly two pacts and three activities.');
+  }
+  if (
+    !reputation ||
+    Number(reputation.finalizedPacts) !== 1 ||
+    Number(reputation.correctPredictions) !== 1 ||
+    Number(reputation.currentStreak) !== 1
+  ) {
+    throw new Error('2026 creation unexpectedly changed the existing creator reputation.');
+  }
+  if (!Array.isArray(activity) || activity.length !== 3) {
+    throw new Error('2026 creation did not return the expected three-activity history.');
+  }
+  const related = activity.filter((item) => item?.pactId === CURRENT_YEAR_PACT_ID);
+  if (
+    related.length !== 1 ||
+    related[0].type !== 'CREATED' ||
+    !sameAddress(related[0].actor, account)
+  ) {
+    throw new Error(
+      '2026 pact must have exactly one creation activity by the demonstration account.',
+    );
+  }
+  return true;
+}
+
 export function assertResolvedDemonstration(
   { pact, reputation, activity, metadata },
   account = DEMONSTRATION_ACCOUNT,
+  { pactCount = 1, activityCount = 2 } = {},
 ) {
   assertCreatedDemonstration(pact, account);
   if (!['RESOLVED_YES', 'RESOLVED_NO'].includes(pact.status)) {
@@ -218,8 +294,13 @@ export function assertResolvedDemonstration(
   ) {
     throw new Error('Final WeatherPact metadata does not match the verified contract.');
   }
-  if (Number(metadata.pactCount) !== 1 || Number(metadata.activityCount) !== 2) {
-    throw new Error('Final contract counts must contain one pact and two activities.');
+  if (
+    Number(metadata.pactCount) !== pactCount ||
+    Number(metadata.activityCount) !== activityCount
+  ) {
+    throw new Error(
+      `Final contract counts must contain ${pactCount} pacts and ${activityCount} activities.`,
+    );
   }
 
   const related = Array.isArray(activity)

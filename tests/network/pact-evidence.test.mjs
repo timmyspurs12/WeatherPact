@@ -8,15 +8,21 @@ import test from 'node:test';
 import { abi } from 'genlayer-js';
 import {
   assertCreatedDemonstration,
+  assertCurrentYearCreation,
   assertResolvedDemonstration,
   assertTransactionCalldata,
   conditionHolds,
+  CURRENT_YEAR_ARGS,
+  CURRENT_YEAR_PACT,
+  CURRENT_YEAR_PACT_ID,
+  CURRENT_YEAR_READY_AT,
   DEMONSTRATION_ACCOUNT,
   DEMONSTRATION_ARGS,
   DEMONSTRATION_PACT,
   DEMONSTRATION_SOURCE_URL,
   encryptedKeystoreAddress,
   HISTORICAL_DATASET_NOTE,
+  pactMatchesCurrentYear,
   pactMatchesDemonstration,
 } from '../../scripts/lib/pact-evidence.mjs';
 
@@ -98,6 +104,29 @@ function resolvedState(observedValue = '21.8') {
   };
 }
 
+function currentYearState() {
+  const previous = resolvedState();
+  const pact = createdPact();
+  pact.id = CURRENT_YEAR_PACT_ID;
+  pact.targetDate = CURRENT_YEAR_PACT.targetDate;
+  pact.readyAt = CURRENT_YEAR_READY_AT;
+  pact.status = 'OPEN';
+  return {
+    pact,
+    reputation: previous.reputation,
+    metadata: { ...previous.metadata, pactCount: 2, activityCount: 3 },
+    activity: [
+      {
+        id: 'EV-0000000003',
+        pactId: CURRENT_YEAR_PACT_ID,
+        type: 'CREATED',
+        actor: DEMONSTRATION_ACCOUNT,
+      },
+      ...previous.activity,
+    ],
+  };
+}
+
 test('evidence runner imports with the locked SDK and stops at usage without credentials or RPC', () => {
   const cwd = fileURLToPath(new URL('../../', import.meta.url));
   const result = spawnSync(process.execPath, ['scripts/studionet-pact-evidence.mjs'], {
@@ -129,6 +158,36 @@ test('an uncertain submission journal locks retries before credentials or RPC', 
       },
       timeout: 10_000,
     });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /no valid transaction hash; refusing to replace it/);
+    assert.doesNotMatch(result.stderr, /Signing preflight|GenLayer RPC error/);
+  } finally {
+    rmSync(evidenceDirectory, { recursive: true, force: true });
+  }
+});
+
+test('an uncertain 2026 journal locks retries before credentials or RPC', () => {
+  const cwd = fileURLToPath(new URL('../../', import.meta.url));
+  const evidenceDirectory = mkdtempSync(join(tmpdir(), 'weatherpact-evidence-2026-'));
+  try {
+    writeFileSync(
+      join(evidenceDirectory, 'create-2026.json'),
+      JSON.stringify({ status: 'SUBMISSION_UNCERTAIN', transactionHash: null }),
+    );
+    const result = spawnSync(
+      process.execPath,
+      ['scripts/studionet-pact-evidence.mjs', 'create-2026'],
+      {
+        cwd,
+        encoding: 'utf8',
+        env: {
+          PATH: process.env.PATH || '',
+          HOME: process.env.HOME || '',
+          WEATHERPACT_EVIDENCE_DIR: evidenceDirectory,
+        },
+        timeout: 10_000,
+      },
+    );
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stderr, /no valid transaction hash; refusing to replace it/);
     assert.doesNotMatch(result.stderr, /Signing preflight|GenLayer RPC error/);
@@ -181,6 +240,14 @@ test('finalized calldata must decode to the exact method and typed arguments', (
     true,
   );
   assert.equal(
+    assertTransactionCalldata(
+      transactionFor('create_pact', CURRENT_YEAR_ARGS),
+      'create_pact',
+      CURRENT_YEAR_ARGS,
+    ),
+    true,
+  );
+  assert.equal(
     assertTransactionCalldata(transactionFor('resolve_pact', ['WP-0000000001']), 'resolve_pact', [
       'WP-0000000001',
     ]),
@@ -227,6 +294,67 @@ test('pact matching uses the raw nested contract schema and creator', () => {
     mutate(candidate);
     assert.equal(pactMatchesDemonstration(candidate), false);
     assert.throws(() => assertCreatedDemonstration(candidate));
+  }
+});
+
+test('current-year creation uses the confirmed 2026 definition and preserves prior reputation', () => {
+  assert.equal(CURRENT_YEAR_ARGS.length, 12);
+  assert.ok(CURRENT_YEAR_ARGS.every((value) => typeof value === 'string'));
+  assert.deepEqual(CURRENT_YEAR_ARGS.slice(7, 12), ['2026-10-25', 'rain_sum', 'gte', '10', 'YES']);
+  assert.equal(CURRENT_YEAR_READY_AT, '2026-11-01T00:00:00Z');
+  const state = currentYearState();
+  assert.equal(pactMatchesCurrentYear(state.pact), true);
+  assert.equal(pactMatchesDemonstration(state.pact), false);
+  assert.equal(assertCurrentYearCreation(state), true);
+  const historicalState = resolvedState();
+  historicalState.metadata = state.metadata;
+  historicalState.activity = state.activity;
+  assert.deepEqual(
+    assertResolvedDemonstration(historicalState, DEMONSTRATION_ACCOUNT, {
+      pactCount: 2,
+      activityCount: 3,
+    }),
+    { conditionHolds: true, correctPrediction: true },
+  );
+});
+
+test('current-year verification rejects wrong state, counts, activity, or reputation', () => {
+  const cases = [
+    (state) => {
+      state.pact.targetDate = '2025-06-15';
+    },
+    (state) => {
+      state.pact.id = 'WP-0000000001';
+    },
+    (state) => {
+      state.pact.status = 'RESOLVED_YES';
+    },
+    (state) => {
+      state.pact.readyAt = '2025-06-22T00:00:00Z';
+    },
+    (state) => {
+      state.metadata.pactCount = 1;
+    },
+    (state) => {
+      state.metadata.activityCount = 2;
+    },
+    (state) => {
+      state.reputation.finalizedPacts = 2;
+    },
+    (state) => {
+      state.activity = state.activity.slice(1);
+    },
+    (state) => {
+      state.activity[0].type = 'RESOLVED';
+    },
+    (state) => {
+      state.activity[0].actor = '0x0000000000000000000000000000000000000000';
+    },
+  ];
+  for (const mutate of cases) {
+    const state = currentYearState();
+    mutate(state);
+    assert.throws(() => assertCurrentYearCreation(state));
   }
 });
 

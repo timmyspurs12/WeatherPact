@@ -11,14 +11,19 @@ import { getAddress } from 'viem';
 import { inspectDeploymentReceipt } from './lib/deployment.mjs';
 import {
   assertCreatedDemonstration,
+  assertCurrentYearCreation,
   assertResolvedDemonstration,
   assertTransactionCalldata,
+  CURRENT_YEAR_ARGS,
+  CURRENT_YEAR_PACT,
+  CURRENT_YEAR_PACT_ID,
   DEMONSTRATION_ACCOUNT,
   DEMONSTRATION_ARGS,
   DEMONSTRATION_CONTRACT,
   DEMONSTRATION_PACT,
   DEMONSTRATION_SOURCE_SHA256,
   encryptedKeystoreAddress,
+  pactMatchesCurrentYear,
   pactMatchesDemonstration,
 } from './lib/pact-evidence.mjs';
 
@@ -313,6 +318,107 @@ async function createPact() {
   console.log(JSON.stringify(evidence, null, 2));
 }
 
+async function createCurrentYearPact() {
+  const path = journalPath('create-2026');
+  let journal = loadJournal(path);
+  if (
+    journal &&
+    (journal.kind !== 'create-2026' ||
+      (journal.pactId && journal.pactId !== CURRENT_YEAR_PACT_ID) ||
+      !journal.input ||
+      Object.keys(journal.input).length !== Object.keys(CURRENT_YEAR_PACT).length ||
+      !Object.entries(CURRENT_YEAR_PACT).every(([key, value]) => journal.input[key] === value))
+  ) {
+    fail('2026 create journal does not match the authorized current-year pact.');
+  }
+
+  if (!journal) {
+    await qualifyDeployment();
+    const [previousState, pacts] = await Promise.all([
+      currentState('WP-0000000001'),
+      page('get_pacts'),
+    ]);
+    const duplicate = pacts.find((pact) => pactMatchesCurrentYear(pact));
+    if (duplicate) {
+      fail(`Matching 2026 pact already exists as ${duplicate.id}; refusing a replacement.`);
+    }
+    assertResolvedDemonstration(previousState);
+    if (pacts.length !== 1) {
+      fail('2026 creation requires exactly the original resolved demonstration pact.');
+    }
+
+    const client = await signingClient();
+    const submission = {
+      version: 1,
+      kind: 'create-2026',
+      contractAddress,
+      accountAddress,
+      input: CURRENT_YEAR_PACT,
+      attemptedAt: new Date().toISOString(),
+    };
+    let transactionHash;
+    try {
+      transactionHash = await client.writeContract({
+        account: client.account,
+        address: contractAddress,
+        functionName: 'create_pact',
+        args: [...CURRENT_YEAR_ARGS],
+        value: 0n,
+        leaderOnly: false,
+      });
+    } catch (error) {
+      saveJson(path, { ...submission, status: 'SUBMISSION_UNCERTAIN', transactionHash: null });
+      fail(
+        `2026 create write did not return a hash; retries are locked at ${path}. Reconcile the account and public transaction history before any manual recovery. ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (!HASH.test(transactionHash)) {
+      saveJson(path, { ...submission, status: 'SUBMISSION_UNCERTAIN', transactionHash: null });
+      fail(
+        '2026 create write returned an invalid hash; retries are locked pending manual reconciliation.',
+      );
+    }
+    journal = {
+      ...submission,
+      status: 'SUBMITTED',
+      transactionHash,
+      submittedAt: new Date().toISOString(),
+    };
+    console.log(`Create 2026 Transaction Hash: ${transactionHash}`);
+    saveJson(path, journal);
+    console.log(`Same-hash journal: ${path}`);
+  } else {
+    console.log(
+      `Resuming recorded 2026 create transaction ${journal.transactionHash}; no replacement will be submitted.`,
+    );
+    await qualifyDeployment();
+  }
+
+  await waitFinalized(journal.transactionHash, 'create_pact', CURRENT_YEAR_ARGS);
+  const pacts = await page('get_pacts');
+  const matches = pacts.filter((pact) => pactMatchesCurrentYear(pact));
+  if (matches.length !== 1) {
+    fail(`Expected exactly one matching 2026 pact, found ${matches.length}.`);
+  }
+  const state = await currentState(matches[0].id);
+  assertCurrentYearCreation(state);
+  const historicalState = await currentState('WP-0000000001');
+  assertResolvedDemonstration(historicalState, accountAddress, {
+    pactCount: 2,
+    activityCount: 3,
+  });
+  journal = {
+    ...journal,
+    status: 'FINALIZED',
+    pactId: CURRENT_YEAR_PACT_ID,
+    finalizedAt: new Date().toISOString(),
+  };
+  saveJson(path, journal);
+  const evidence = publicEvidence('create-2026', journal.transactionHash, state);
+  saveJson(journalPath('create-2026-evidence', CURRENT_YEAR_PACT_ID), evidence);
+  console.log(JSON.stringify(evidence, null, 2));
+}
+
 async function resolvePact(pactId) {
   if (!PACT_ID.test(pactId || '')) fail('Usage: resolve WP-0000000001');
   const path = journalPath('resolve', pactId);
@@ -416,9 +522,13 @@ async function showPact(pactId) {
 
 try {
   if (command === 'create') await createPact();
+  else if (command === 'create-2026') await createCurrentYearPact();
   else if (command === 'resolve') await resolvePact(pactIdArgument);
   else if (command === 'show') await showPact(pactIdArgument);
-  else fail('Usage: node scripts/studionet-pact-evidence.mjs <create|resolve WP-...|show WP-...>');
+  else
+    fail(
+      'Usage: node scripts/studionet-pact-evidence.mjs <create|create-2026|resolve WP-...|show WP-...>',
+    );
 } catch (error) {
   console.error(
     `Evidence runner stopped: ${error instanceof Error ? error.message : String(error)}`,
